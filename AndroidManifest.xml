@@ -5,10 +5,12 @@
     android:versionName="1.0" >
 
     <uses-sdk
-        android:minSdkVersion="8"
+        android:minSdkVersion="11"
         android:targetSdkVersion="14" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO"></uses-permission>
+    <uses-permission android:name="android.permission.BLUETOOTH"></uses-permission>
+	<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"></uses-permission>
 
     <application
         android:allowBackup="true"
@@ -16,7 +18,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="bz.tereboo.tereboo.MainActivity"
+            android:name="biz.tereboo.tereboo.MainActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -24,6 +26,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+		<!-- Bluetoothデバイス選択  -->
+        <activity android:name="biz.tereboo.tereboo.bluetooth.DeviceListActivity"
+                  android:label="@string/select_device"
+                  android:theme="@android:style/Theme.Holo.Dialog"
+                  android:configChanges="orientation|keyboardHidden" />
+
+        <!-- 端末起動時 のブロードキャスト受け取り -->
+        <receiver android:name="BootReceiver" android:process=":remote">
+ 			<intent-filter>
+ 				<action android:name="android.intent.action.BOOT_COMPLETED"/>
+ 			</intent-filter>
+		</receiver>
+
     </application>
 
 </manifest>

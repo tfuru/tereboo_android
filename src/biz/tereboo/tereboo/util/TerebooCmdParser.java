@@ -1,4 +1,4 @@
-package bz.tereboo.tereboo.util;
+package biz.tereboo.tereboo.util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
