@@ -2,25 +2,21 @@ package biz.tereboo.tereboo;
 
 import java.util.List;
 
-import biz.tereboo.tereboo.bluetooth.BluetoothChatService;
-import biz.tereboo.tereboo.bluetooth.BluetoothUtil;
-import biz.tereboo.tereboo.bluetooth.DeviceListActivity;
-import biz.tereboo.tereboo.bluetooth.BluetoothUtil.BluetoothDevieFoundReceiverEventsListener;
-import biz.tereboo.tereboo.util.AquesTalk2Util;
-import biz.tereboo.tereboo.util.SpeechRecognizerUtil;
-import biz.tereboo.tereboo.util.TerebooCmdParser;
-import bz.tereboo.tereboo.R;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.app.Activity;
-import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+import biz.tereboo.tereboo.bluetooth.BluetoothUtil;
+import biz.tereboo.tereboo.bluetooth.DeviceListActivity;
+import biz.tereboo.tereboo.http.HttpPostTask;
+import biz.tereboo.tereboo.util.AquesTalk2Util;
+import biz.tereboo.tereboo.util.SpeechRecognizerUtil;
+import biz.tereboo.tereboo.util.TerebooCmdParser;
+import bz.tereboo.tereboo.R;
 
 public class MainActivity extends Activity{
 	private static final String TAG = "MainActivity";
@@ -36,7 +32,6 @@ public class MainActivity extends Activity{
 
 	private static final int REQUEST_ENABLE_BLUETOOTH = 100;
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
-    private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
     private static final int REQUEST_ENABLE_BT = 3;
 
     @Override
@@ -52,6 +47,10 @@ public class MainActivity extends Activity{
         if(false == bluetoothUtil.isSupport()){
         	//Bluetooth 未対応端末
         	//TODO アラーを表示してアプリ終了
+        	Log.i(TAG,"Bluetooth 未対応端末でした");
+        	Toast.makeText(getApplicationContext(), "Bluetooth 未対応端末のようです。", Toast.LENGTH_SHORT).show();
+        	this.finish();
+        	return;
         }
 
         if(false == bluetoothUtil.isEnabled()){
@@ -64,14 +63,13 @@ public class MainActivity extends Activity{
 			public void onClick(View v) {
 				//音声認 識開始
 				speechRecognizerUtil.start();
-				//aquesTalk2Util.speech("おかえり、てれびつけるね", R.raw.aq_yukkuri, 100);
 			}
 		});
 
         ((Button) findViewById(R.id.button2)).setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				//Bluetooth デバイス一覧を表示
+				//Bluetooth デバイス一覧を表示 & 接続
 				showDeviceList();
 			}
 		});
@@ -80,10 +78,42 @@ public class MainActivity extends Activity{
 			@Override
 			public void onClick(View v) {
 				//Bluetooth でデータ送信
-				byte[] send = "tbs\r\n".getBytes();
+				byte[] send = "tbs\n".getBytes();
 				bluetoothUtil.writeChatService(send);
 			}
 		});
+
+        ((Button) findViewById(R.id.button4)).setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+
+				//HTTPでデータ送信
+				String url = "http://tereboo.biz/tfuru/channel.php";
+				HttpPostTask postTask = new HttpPostTask(MainActivity.this, url, postHandler);
+				postTask.addPostParam("type", "channel");
+				postTask.addPostParam("cmd", "tbs");
+				postTask.addPostParam("q", "テレブ tbsに変えて");
+				postTask.execute();
+
+			}
+		});
+    }
+
+    @Override
+    public synchronized void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Bluetooth 接続を終了
+        bluetoothUtil.closeChatService();
     }
 
     /** Bluetooth デバイス一覧
@@ -164,49 +194,30 @@ public class MainActivity extends Activity{
                 	 bluetoothUtil.connectChatService(data, true);
                  }
                  break;
-             case REQUEST_CONNECT_DEVICE_INSECURE:
-                 if (resultCode == Activity.RESULT_OK) {
-                	 bluetoothUtil.connectChatService(data, false);
-                 }
-                 break;
              case REQUEST_ENABLE_BT:
             	 break;
         	 }
          }
     }
 
-    /** Bluetooth関連のイベントリスナー
+    /** HTTP POSTリクエスト
      *
      */
-    public BluetoothUtil.BluetoothDevieFoundReceiverEventsListener bluetoothDevieFoundReceiverEventsListener = new BluetoothUtil.BluetoothDevieFoundReceiverEventsListener(){
-
+    private HttpPostTask.HttpPostHandler postHandler = new HttpPostTask.HttpPostHandler(){
 		@Override
-		public void onDiscoveryStarted() {
-            Log.i(TAG,"スキャン開始");
+		public void onPostSuccess(int statusCode, String response) {
+			//送信レスポンス
+			Log.d(TAG, "Success statusCode:"+statusCode);
+			Log.d(TAG, response);
+
+			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
 		}
 
 		@Override
-		public void onFound(BluetoothDevice foundDevice) {
-			Log.i(TAG,"デバイスが検出された");
-			String dName = foundDevice.getName();
-			if(dName != null){
-				Log.i(TAG,"dName:"+dName);
-				//TODO ここで スピーカーと mbed の名前を探す？
-			}
-		}
-
-		@Override
-		public void onNameChanged(BluetoothDevice foundDevice) {
-			Log.i(TAG,"デバイス名が検出された");
-			String dName = foundDevice.getName();
-			if(dName != null){
-				Log.i(TAG,"dName:"+dName);
-			}
-		}
-
-		@Override
-		public void onDiscoveryFinished() {
-			Log.i(TAG,"スキャン終了");
+		public void onPostFailed(int statusCode, String response) {
+			// 失敗時レスポンス
+			Log.d(TAG, "Failed statusCode:"+statusCode);
+			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
 		}
     };
 }

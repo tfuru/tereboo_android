@@ -144,7 +144,7 @@ public class BluetoothUtil {
 	 *
 	 */
 	public static void startChatService(){
-
+		if(chatService == null) return;
 		chatService.start();
 	}
 
@@ -152,6 +152,7 @@ public class BluetoothUtil {
 	 *
 	 */
 	public static void connectChatService(Intent data, boolean secure){
+		if(chatService == null) return;
         String address = data.getExtras().getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
         BluetoothDevice device = bluetoothAdapter.getRemoteDevice(address);
         chatService.connect(device, secure);
@@ -167,6 +168,7 @@ public class BluetoothUtil {
 	}
 
 	public static void closeChatService(){
+		if(chatService == null) return;
 		chatService.stop();
 	}
 
@@ -196,12 +198,14 @@ public class BluetoothUtil {
                 byte[] writeBuf = (byte[]) msg.obj;
                 // construct a string from the buffer
                 String writeMessage = new String(writeBuf);
+                Toast.makeText(context, "writeMessage "+ writeMessage, Toast.LENGTH_SHORT).show();
                 //mConversationArrayAdapter.add("Me:  " + writeMessage);
                 break;
             case BluetoothChatService.MESSAGE_READ:
                 byte[] readBuf = (byte[]) msg.obj;
                 // construct a string from the valid bytes in the buffer
                 String readMessage = new String(readBuf, 0, msg.arg1);
+                Toast.makeText(context, "readMessage "+ readMessage, Toast.LENGTH_SHORT).show();
                 //mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
                 break;
             case BluetoothChatService.MESSAGE_DEVICE_NAME:
