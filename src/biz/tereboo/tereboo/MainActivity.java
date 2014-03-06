@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.http.client.CookieStore;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONObject;
 
 import android.app.Activity;
@@ -21,6 +23,7 @@ import biz.tereboo.tereboo.util.AquesTalk2Util;
 import biz.tereboo.tereboo.util.SpeechRecognizerUtil;
 import biz.tereboo.tereboo.util.TerebooApiUtil;
 import biz.tereboo.tereboo.util.TerebooCmdParser;
+import biz.tereboo.tereboo.websocket.WebSocketUtil;
 import bz.tereboo.tereboo.R;
 
 public class MainActivity extends Activity{
@@ -34,6 +37,9 @@ public class MainActivity extends Activity{
 
 	//Bluetooth ラッパークラス
 	private BluetoothUtil bluetoothUtil = null;
+
+	//WebSocket ラッパークラス
+	private WebSocketUtil webSocketUtil = null;
 
 	private static final int REQUEST_ENABLE_BLUETOOTH = 100;
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
@@ -67,6 +73,10 @@ public class MainActivity extends Activity{
         	//BluetoothがONになっていないのでONにするように促す
         	bluetoothUtil.showEnableBluetoothDialog(this, REQUEST_ENABLE_BLUETOOTH);
         }
+
+        //WebSocket
+        this.webSocketUtil = new WebSocketUtil(getApplicationContext(),"ws://153.121.52.22:8000/",this.webSocketEventsListener);
+        this.webSocketUtil.connect();
 
         ((Button) findViewById(R.id.button1)).setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -123,7 +133,9 @@ public class MainActivity extends Activity{
     public void onDestroy() {
         super.onDestroy();
         // Bluetooth 接続を終了
-        bluetoothUtil.closeChatService();
+        this.bluetoothUtil.closeChatService();
+        //WebSocket 切断
+        this.webSocketUtil.close();
     }
 
     /** Bluetooth デバイス一覧
@@ -189,17 +201,44 @@ public class MainActivity extends Activity{
 
 					//Bluetooth で チャンネル切り替えを行う
 				}
-				else if( "tbs".equals(cmd) ){
+				else if( TerebooCmdParser.COMMAND_CHANNEL_TBS.equals(cmd) ){
 					aquesTalk2Util.speech("てぃーびーえすにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
 				}
-				else if( "tvtokyo".equals(cmd) ){
+				else if( TerebooCmdParser.COMMAND_CHANNEL_TVTOKYO.equals(cmd) ){
 					aquesTalk2Util.speech("てれとうにするね。", R.raw.aq_yukkuri, 100);
+					//Bluetooth で チャンネル切り替えを行う
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_FUJITV.equals(cmd) ){
+					aquesTalk2Util.speech("ふぃじてれびにするね。", R.raw.aq_yukkuri, 100);
+					//Bluetooth で チャンネル切り替えを行う
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_TV_ASAHI.equals(cmd) ){
+					aquesTalk2Util.speech("てれあさにするね。", R.raw.aq_yukkuri, 100);
+					//Bluetooth で チャンネル切り替えを行う
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_NTV.equals(cmd) ){
+					aquesTalk2Util.speech("にってれにするね。", R.raw.aq_yukkuri, 100);
+					//Bluetooth で チャンネル切り替えを行う
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_NHK.equals(cmd) ){
+					aquesTalk2Util.speech("えぬえちけーにするね。", R.raw.aq_yukkuri, 100);
+					//Bluetooth で チャンネル切り替えを行う
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_E_TELE.equals(cmd) ){
+					aquesTalk2Util.speech("いーてれにするね。", R.raw.aq_yukkuri, 100);
+					//Bluetooth で チャンネル切り替えを行う
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_MXTV.equals(cmd) ){
+					aquesTalk2Util.speech("えむえっくすにするね。", R.raw.aq_yukkuri, 100);
+					//Bluetooth で チャンネル切り替えを行う
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_TELETAMA.equals(cmd) ){
+					aquesTalk2Util.speech("てれたまにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
 				}
 				else if( "shiritori_start".equals(cmd) ){
 					// aquesTalk2Util.speech("しりとり。はじめは、しりとりの、りから。", R.raw.aq_yukkuri, 100);
-
 					//しりとり モードに入る
 					shiritoriMode = true;
 					q = "しりとりをやろうよ";
@@ -299,6 +338,32 @@ public class MainActivity extends Activity{
 		public void onPostFailed(int statusCode, String response) {
 			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
 		}
+	};
 
+	/** WebSocketのイベントリスナー
+	 *
+	 */
+	public WebSocketUtil.WebSocketUtilEventsListener webSocketEventsListener = new WebSocketUtil.WebSocketUtilEventsListener(){
+		@Override
+		public void onOpen(ServerHandshake handshake) {
+			Log.d(TAG, "ws Open");
+		}
+
+		@Override
+		public void onMessage(String message) {
+			Log.d(TAG, "ws message:"+message);
+			//WebSocketでメッセージが届いた
+			Toast.makeText(getApplicationContext(), "ws message:"+message, Toast.LENGTH_SHORT).show();
+		}
+
+		@Override
+		public void onError(Exception e) {
+			Log.d(TAG, "ws e:"+e.getMessage());
+		}
+
+		@Override
+		public void onClose(int code, String reason, boolean remote) {
+			Log.d(TAG, "ws close:"+code+" "+reason+" "+remote);
+		}
 	};
 }

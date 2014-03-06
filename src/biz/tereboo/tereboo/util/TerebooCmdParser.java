@@ -25,6 +25,17 @@ public class TerebooCmdParser {
 		}
 	};
 
+	public static String COMMAND_CHANNEL_TBS = "tbs";
+	public static String COMMAND_CHANNEL_TVTOKYO = "tvtokyo";
+	public static String COMMAND_CHANNEL_FUJITV = "fujitv";
+	public static String COMMAND_CHANNEL_TV_ASAHI = "tv-asahi";
+	public static String COMMAND_CHANNEL_NTV = "ntv";
+	public static String COMMAND_CHANNEL_NHK = "nhk";
+	public static String COMMAND_CHANNEL_E_TELE = "e-tele";
+
+	public static String COMMAND_CHANNEL_MXTV = "mxtv";
+	public static String COMMAND_CHANNEL_TELETAMA = "teletama";
+
 	//コマンド対象 コマンド内容として認識する対象文字列
 	private static Map<String,String> COMMANDS = new HashMap<String, String>(){
 		{
@@ -34,12 +45,27 @@ public class TerebooCmdParser {
 			put("これ買って","buy");
 
 			//各放送局コマンド
-			put("tbsをみせて", "tbs");
-			put("tbsを見せて", "tbs");
-			put("テレ東をみせて", "tvtokyo");
-			put("テレ東を見せて", "tvtokyo");
+			put("tbsを見せて", 		COMMAND_CHANNEL_TBS);
+			put("tbsをみせて", 		COMMAND_CHANNEL_TBS);
+			put("テレ東を見せて",	 	COMMAND_CHANNEL_TVTOKYO);
+			put("テレ東をみせて", 		COMMAND_CHANNEL_TVTOKYO);
+			put("フジテレビを見せて", 	COMMAND_CHANNEL_FUJITV);
+			put("フジテレビをみせて", 	COMMAND_CHANNEL_FUJITV);
+			put("テレ朝を見せて", 		COMMAND_CHANNEL_TV_ASAHI);
+			put("テレ朝をみせて", 		COMMAND_CHANNEL_TV_ASAHI);
+			put("日テレを見せて", 		COMMAND_CHANNEL_NTV);
+			put("日テレをみせて", 		COMMAND_CHANNEL_NTV);
+			put("nhkを見せて", 		COMMAND_CHANNEL_NHK);
+			put("nhkをみせて", 		COMMAND_CHANNEL_NHK);
+			put("いいテレを見せて", 	COMMAND_CHANNEL_E_TELE);
+			put("いいテレをみせて", 	COMMAND_CHANNEL_E_TELE);
 
-			//
+			put("mxを見せて", 		COMMAND_CHANNEL_MXTV);
+			put("mxをみせて", 		COMMAND_CHANNEL_MXTV);
+			put("テレ玉を見せて", 		COMMAND_CHANNEL_TELETAMA);
+			put("テレ玉をみせて", 		COMMAND_CHANNEL_TELETAMA);
+
+			//しりとりモード
 			put("しりとりをしようよ", "shiritori_start");
 			put("しりとりをやろうよ", "shiritori_start");
 			put("しりとりは終わり", "shiritori_stop");
