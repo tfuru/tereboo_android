@@ -6,6 +6,7 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
 import android.content.Context;
+import android.util.Log;
 
 public class WebSocketUtil {
 	private static String TAG = WebSocketUtil.class.getName();
@@ -26,7 +27,7 @@ public class WebSocketUtil {
 				}
 
 				@Override
-				public void onMessage(final String message) {
+				public void onMessage(String message) {
 					WebSocketUtil.this.listener.onMessage(message);
 				}
 

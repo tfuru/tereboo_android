@@ -6,11 +6,13 @@ import java.util.Map;
 import org.apache.http.client.CookieStore;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -28,6 +30,9 @@ import bz.tereboo.tereboo.R;
 
 public class MainActivity extends Activity{
 	private static final String TAG = "MainActivity";
+
+	//UI更新用のハンドラー
+	private Handler mainHandler = new Handler();
 
 	//音声認識 ラッパークラス
 	private SpeechRecognizerUtil speechRecognizerUtil = null;
@@ -98,7 +103,7 @@ public class MainActivity extends Activity{
 			@Override
 			public void onClick(View v) {
 				//Bluetooth でデータ送信
-				byte[] send = "tbs\n".getBytes();
+				byte[] send = "c tbs\n".getBytes();
 				bluetoothUtil.writeChatService(send);
 			}
 		});
@@ -204,38 +209,47 @@ public class MainActivity extends Activity{
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TBS.equals(cmd) ){
 					aquesTalk2Util.speech("てぃーびーえすにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
+					bluetoothUtil.writeChatService("c tbs\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TVTOKYO.equals(cmd) ){
 					aquesTalk2Util.speech("てれとうにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
+					bluetoothUtil.writeChatService("c tvtokyo\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_FUJITV.equals(cmd) ){
 					aquesTalk2Util.speech("ふぃじてれびにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
+					bluetoothUtil.writeChatService("c fujitv\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TV_ASAHI.equals(cmd) ){
 					aquesTalk2Util.speech("てれあさにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
+					bluetoothUtil.writeChatService("c tv-asahi\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_NTV.equals(cmd) ){
 					aquesTalk2Util.speech("にってれにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
+					bluetoothUtil.writeChatService("c ntv\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_NHK.equals(cmd) ){
 					aquesTalk2Util.speech("えぬえちけーにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
+					bluetoothUtil.writeChatService("c nhk\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_E_TELE.equals(cmd) ){
 					aquesTalk2Util.speech("いーてれにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
+					bluetoothUtil.writeChatService("c e-tele\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_MXTV.equals(cmd) ){
 					aquesTalk2Util.speech("えむえっくすにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
+					bluetoothUtil.writeChatService("c mxtv\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TELETAMA.equals(cmd) ){
 					aquesTalk2Util.speech("てれたまにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
+					bluetoothUtil.writeChatService("c teletama\n".getBytes());
 				}
 				else if( "shiritori_start".equals(cmd) ){
 					// aquesTalk2Util.speech("しりとり。はじめは、しりとりの、りから。", R.raw.aq_yukkuri, 100);
@@ -350,10 +364,38 @@ public class MainActivity extends Activity{
 		}
 
 		@Override
-		public void onMessage(String message) {
+		public void onMessage(final String message) {
 			Log.d(TAG, "ws message:"+message);
-			//WebSocketでメッセージが届いた
-			Toast.makeText(getApplicationContext(), "ws message:"+message, Toast.LENGTH_SHORT).show();
+			try {
+				JSONObject rootObj = new JSONObject(message);
+				//TODO 仮フォーマットをパースして画面&音声合成
+				String cmd = rootObj.getString("cmd");
+				if("url".equals(cmd)){
+					final String url = rootObj.getString("url");
+					//WebSocketでメッセージが届いた
+					mainHandler.post(new Runnable() {
+						@Override
+						public void run() {
+							Toast.makeText(getApplicationContext(), "ws url:"+url, Toast.LENGTH_SHORT).show();
+						}
+					});
+				}
+				else if("txt".equals(cmd)){
+					//テキストだった場合 音声合成してみる
+					final String txt = rootObj.getString("txt");
+					mainHandler.post(new Runnable() {
+						@Override
+						public void run() {
+							aquesTalk2Util.speech(txt, R.raw.aq_yukkuri, 100);
+						}
+					});
+				}
+
+
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 		@Override
