@@ -3,7 +3,6 @@ package biz.tereboo.tereboo.http;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,13 +10,19 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.CookieStore;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.protocol.ClientContext;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 
+import biz.tereboo.tereboo.util.AquesTalk2Util;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -30,11 +35,17 @@ public class HttpPostTask extends AsyncTask<Void, Void, Void> {
 
 	private static final String ENCODING = "UTF-8";
 
+	private static HttpPostTask instance;
+
 	private Context context;
+
 	// 送信先 URL
 	private String postUrl;
 	// UI等にレスポンスを通知するのハンドラー
 	private Handler handler;
+
+	private static CookieStore cookieStore = null;
+	private DefaultHttpClient client = null;
 
 	//送信パラメータ
 	private List<NameValuePair> postParams = null;
@@ -48,11 +59,26 @@ public class HttpPostTask extends AsyncTask<Void, Void, Void> {
 
 	/** コンストラクタ
 	 *
+	 * @param context
+	 * @param postUrl
+	 * @param handler
 	 */
-	public HttpPostTask(Context context, String postUrl,Handler handler ){
+	public HttpPostTask(Context context, String postUrl,HttpPostTask.HttpPostHandler handler){
+		this(context, postUrl, handler, null);
+	}
+
+	/** コンストラクタ
+	 *
+	 * @param context
+	 * @param postUrl
+	 * @param handler
+	 * @param cookieStore
+	 */
+	public HttpPostTask(Context context, String postUrl,HttpPostTask.HttpPostHandler handler,CookieStore cookieStore){
 		this.context = context;
 		this.postUrl = postUrl;
 		this.handler = handler;
+		this.cookieStore = cookieStore;
 
 		this.postParams =  new ArrayList<NameValuePair>();
 	}
@@ -121,9 +147,21 @@ public class HttpPostTask extends AsyncTask<Void, Void, Void> {
 			return null;
 		}
 
-		DefaultHttpClient client = new DefaultHttpClient();
+		// Cookie,SESSIONを利用するための設定
+	    HttpContext localContext = new BasicHttpContext();
+	    if(cookieStore != null){
+	    	//クッキーの引き継ぎ
+	    	localContext.setAttribute(ClientContext.COOKIE_STORE, cookieStore);
+	    }
+
+		client = new DefaultHttpClient();
 		try {
-			client.execute(request, responseHandler);
+			client.execute(request, responseHandler, localContext);
+
+			//接続後の CookieStoreを取得
+			if(cookieStore == null){
+				cookieStore = client.getCookieStore();
+			}
 		} catch (ClientProtocolException e) {
 			e.printStackTrace();
 			Log.i(TAG, "プロトコルエラー");
@@ -143,6 +181,9 @@ public class HttpPostTask extends AsyncTask<Void, Void, Void> {
 	 */
 	@Override
 	protected void onPostExecute(Void unused) {
+		//httpクライアント終了処理
+		client.getConnectionManager().shutdown();
+
 		//UI等に通知するハンドラーを使って通知する
 		Message message = new Message();
 		Bundle bundle = new Bundle();
@@ -166,7 +207,8 @@ public class HttpPostTask extends AsyncTask<Void, Void, Void> {
 
 			if(200 == statusCode){
 				//成功時
-				onPostSuccess(statusCode,responseData);
+
+				onPostSuccess(statusCode,responseData,cookieStore);
 			}
 			else{
 				//失敗時のレスポンス
@@ -174,7 +216,7 @@ public class HttpPostTask extends AsyncTask<Void, Void, Void> {
 			}
 		}
 		//成功時のレスポンス通知
-		public abstract void onPostSuccess(int statusCode, String response );
+		public abstract void onPostSuccess(int statusCode, String response,CookieStore cookieStore);
 		//失敗時のレスポンス通知
 		public abstract void onPostFailed( int statusCode, String response );
 	}

@@ -1,6 +1,10 @@
 package biz.tereboo.tereboo;
 
 import java.util.List;
+import java.util.Map;
+
+import org.apache.http.client.CookieStore;
+import org.json.JSONObject;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -15,6 +19,7 @@ import biz.tereboo.tereboo.bluetooth.DeviceListActivity;
 import biz.tereboo.tereboo.http.HttpPostTask;
 import biz.tereboo.tereboo.util.AquesTalk2Util;
 import biz.tereboo.tereboo.util.SpeechRecognizerUtil;
+import biz.tereboo.tereboo.util.TerebooApiUtil;
 import biz.tereboo.tereboo.util.TerebooCmdParser;
 import bz.tereboo.tereboo.R;
 
@@ -33,6 +38,11 @@ public class MainActivity extends Activity{
 	private static final int REQUEST_ENABLE_BLUETOOTH = 100;
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
     private static final int REQUEST_ENABLE_BT = 3;
+
+    //しりとりモード
+    private boolean shiritoriMode = false;
+    private Runnable shiritoriCallback = null;
+	private CookieStore shiritoriCookieStore = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,7 +99,7 @@ public class MainActivity extends Activity{
 
 				//HTTPでデータ送信
 				String url = "http://tereboo.biz/tfuru/channel.php";
-				HttpPostTask postTask = new HttpPostTask(MainActivity.this, url, postHandler);
+				HttpPostTask postTask = new HttpPostTask(getApplicationContext(), url, postHandler);
 				postTask.addPostParam("type", "channel");
 				postTask.addPostParam("cmd", "tbs");
 				postTask.addPostParam("q", "テレブ tbsに変えて");
@@ -149,7 +159,26 @@ public class MainActivity extends Activity{
 		public void onResults(List<String> results) {
 			//音声認識 終了
 			//コマンド解析
-			String cmd = TerebooCmdParser.parse(results);
+			Map<String,String> result = TerebooCmdParser.parse(results);
+			String cmd = result.get(TerebooCmdParser.RESULT_CMD);
+			String q = result.get(TerebooCmdParser.RESULT_TXT);
+
+			if(shiritoriMode == true){
+				//しりとりモード中
+				if("shiritori_stop".equals(cmd)){
+					//しりとりモード終了
+					// "テレブー しりとりはおわり" で終了
+					shiritoriMode = false;
+					shiritoriCookieStore.clear();
+					TerebooApiUtil.shiritori(getApplicationContext(), siritoriHandler, shiritoriCookieStore, q, false);
+				}else{
+					//しりとり中 なのでワードだけ送信
+					q = results.get(0);
+					TerebooApiUtil.shiritori(getApplicationContext(), siritoriHandler, shiritoriCookieStore, q, true);
+				}
+				return;
+			}
+
 			if(cmd != null){
 				Toast.makeText(getApplicationContext(), "認識 コマンド:"+cmd, Toast.LENGTH_SHORT).show();
 				//TOTD APIサーバーへ通知してレスポンスを貰う
@@ -168,9 +197,13 @@ public class MainActivity extends Activity{
 					aquesTalk2Util.speech("てれとうにするね。", R.raw.aq_yukkuri, 100);
 					//Bluetooth で チャンネル切り替えを行う
 				}
-				else if( "shiritori".equals(cmd) ){
-					aquesTalk2Util.speech("しりとり。はじめは、しりとりの、りから。", R.raw.aq_yukkuri, 100);
-					//Bluetooth で チャンネル切り替えを行う
+				else if( "shiritori_start".equals(cmd) ){
+					// aquesTalk2Util.speech("しりとり。はじめは、しりとりの、りから。", R.raw.aq_yukkuri, 100);
+
+					//しりとり モードに入る
+					shiritoriMode = true;
+					q = "しりとりをやろうよ";
+					TerebooApiUtil.shiritori(getApplicationContext(), siritoriHandler, shiritoriCookieStore, q, true);
 				}
 			}
 			else{
@@ -205,7 +238,7 @@ public class MainActivity extends Activity{
      */
     private HttpPostTask.HttpPostHandler postHandler = new HttpPostTask.HttpPostHandler(){
 		@Override
-		public void onPostSuccess(int statusCode, String response) {
+		public void onPostSuccess(int statusCode, String response,CookieStore cookieStore) {
 			//送信レスポンス
 			Log.d(TAG, "Success statusCode:"+statusCode);
 			Log.d(TAG, response);
@@ -220,4 +253,52 @@ public class MainActivity extends Activity{
 			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
 		}
     };
+
+
+	/** しりとり結果を受け取る
+	 *
+	 */
+	HttpPostTask.HttpPostHandler siritoriHandler = new HttpPostTask.HttpPostHandler(){
+
+		@Override
+		public void onPostSuccess(int statusCode, String response,CookieStore cookieStore) {
+			//しりとりの返事をJSONで受け取る
+			try{
+				//継続の為クッキーを保存
+				shiritoriCookieStore = cookieStore;
+
+				JSONObject rootObj = new JSONObject(response);
+				//String utt = rootObj.getString("utt");
+				String yomi = rootObj.getString("yomi");
+
+				Toast.makeText(getApplicationContext(), "yomi:"+yomi, Toast.LENGTH_SHORT).show();
+				Log.d(TAG, "shiritoriMode:"+shiritoriMode+" yomi:"+yomi);
+
+				//yomiの値を音声合成で出力する
+				if(shiritoriMode == true){
+					//しりとりモードの場合だけ、連続音声認識
+					shiritoriCallback = new Runnable() {
+						@Override
+						public void run() {
+							if(shiritoriMode == true){
+								//連続音声認識
+								Log.d(TAG, "speech callback");
+								speechRecognizerUtil.start();
+							}
+						}
+					};
+				}
+
+				aquesTalk2Util.speech(yomi, R.raw.aq_yukkuri, 100, shiritoriCallback);
+			}catch (Exception e) {
+				// TODO: handle exception
+			}
+		}
+
+		@Override
+		public void onPostFailed(int statusCode, String response) {
+			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
+		}
+
+	};
 }
