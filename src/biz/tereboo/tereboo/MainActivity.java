@@ -45,6 +45,7 @@ public class MainActivity extends Activity{
 
 	//WebSocket ラッパークラス
 	private WebSocketUtil webSocketUtil = null;
+	private static final String webSocketServerURL = "ws://153.121.52.22:8000/";
 
 	private static final int REQUEST_ENABLE_BLUETOOTH = 100;
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
@@ -54,6 +55,10 @@ public class MainActivity extends Activity{
     private boolean shiritoriMode = false;
     private Runnable shiritoriCallback = null;
 	private CookieStore shiritoriCookieStore = null;
+
+	//会話のリソースID
+	private static final int speechResID = R.raw.aq_yukkuri;
+	private static final int speechSpeed = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +85,7 @@ public class MainActivity extends Activity{
         }
 
         //WebSocket
-        this.webSocketUtil = new WebSocketUtil(getApplicationContext(),"ws://153.121.52.22:8000/",this.webSocketEventsListener);
+        this.webSocketUtil = new WebSocketUtil(getApplicationContext(),webSocketServerURL,this.webSocketEventsListener);
         this.webSocketUtil.connect();
 
         ((Button) findViewById(R.id.button1)).setOnClickListener(new View.OnClickListener() {
@@ -202,65 +207,87 @@ public class MainActivity extends Activity{
 				//TODO APIサーバからのレスポンスを音声合成
 				if( "tadaima".equals(cmd) ){
 					//Toast.makeText(getApplicationContext(), "speech", Toast.LENGTH_SHORT).show();
-					aquesTalk2Util.speech("おかえり、てれびつけるね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("おかえり、てれびつけるね。", speechResID, speechSpeed);
 
-					//Bluetooth で チャンネル切り替えを行う
+					//BluetoothでテレビON
+					bluetoothUtil.writeChatService("p on\n".getBytes());
+				}
+				else if( "oyasumi".equals(cmd) ){
+					//Toast.makeText(getApplicationContext(), "speech", Toast.LENGTH_SHORT).show();
+					aquesTalk2Util.speech("おやすみなさい。", speechResID, speechSpeed);
+
+					//Bluetooth で テレビ OFF
+					bluetoothUtil.writeChatService("p off\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TBS.equals(cmd) ){
-					aquesTalk2Util.speech("てぃーびーえすにするね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("てぃーびーえすにするね。", speechResID, speechSpeed);
+
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c tbs\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TVTOKYO.equals(cmd) ){
-					aquesTalk2Util.speech("てれとうにするね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("てれとうにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c tvtokyo\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_FUJITV.equals(cmd) ){
-					aquesTalk2Util.speech("ふぃじてれびにするね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("ふぃじてれびにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c fujitv\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TV_ASAHI.equals(cmd) ){
-					aquesTalk2Util.speech("てれあさにするね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("てれあさにするね。", speechResID, speechSpeed);
+
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c tv-asahi\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_NTV.equals(cmd) ){
-					aquesTalk2Util.speech("にってれにするね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("にってれにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c ntv\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_NHK.equals(cmd) ){
-					aquesTalk2Util.speech("えぬえちけーにするね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("えぬえちけーにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c nhk\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_E_TELE.equals(cmd) ){
-					aquesTalk2Util.speech("いーてれにするね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("いーてれにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c e-tele\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_MXTV.equals(cmd) ){
-					aquesTalk2Util.speech("えむえっくすにするね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("えむえっくすにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c mxtv\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TELETAMA.equals(cmd) ){
-					aquesTalk2Util.speech("てれたまにするね。", R.raw.aq_yukkuri, 100);
+					aquesTalk2Util.speech("てれたまにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c teletama\n".getBytes());
 				}
 				else if( "shiritori_start".equals(cmd) ){
-					// aquesTalk2Util.speech("しりとり。はじめは、しりとりの、りから。", R.raw.aq_yukkuri, 100);
 					//しりとり モードに入る
 					shiritoriMode = true;
 					q = "しりとりをやろうよ";
 					TerebooApiUtil.shiritori(getApplicationContext(), siritoriHandler, shiritoriCookieStore, q, true);
 				}
+				else if( "buy".equals(cmd) ){
+					//これ買って
+					// サーバにPOSTして その時間の 現在チャンネルの番組の商品を探して 購入させる？
+				}
 			}
 			else{
 				Toast.makeText(getApplicationContext(), "認識 コマンドを認識できませんでした", Toast.LENGTH_SHORT).show();
+
+				Runnable callback = new Runnable() {
+					@Override
+					public void run() {
+						//再度 音声認識モードになる
+						speechRecognizerUtil.start();
+					}
+				};
+				aquesTalk2Util.speech("ごめんなさい。ききとれませんでした。", speechResID, speechSpeed, callback);
 			}
 		}
     };
@@ -342,7 +369,7 @@ public class MainActivity extends Activity{
 					};
 				}
 
-				aquesTalk2Util.speech(yomi, R.raw.aq_yukkuri, 100, shiritoriCallback);
+				aquesTalk2Util.speech(yomi, speechResID, speechSpeed, shiritoriCallback);
 			}catch (Exception e) {
 				// TODO: handle exception
 			}
@@ -386,7 +413,7 @@ public class MainActivity extends Activity{
 					mainHandler.post(new Runnable() {
 						@Override
 						public void run() {
-							aquesTalk2Util.speech(txt, R.raw.aq_yukkuri, 100);
+							aquesTalk2Util.speech(txt, speechResID, speechSpeed);
 						}
 					});
 				}
