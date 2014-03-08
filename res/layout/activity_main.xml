@@ -33,7 +33,7 @@
          android:layout_alignRight="@+id/button1"
          android:layout_below="@+id/button2"
          android:layout_marginTop="19dp"
-         android:text="Bluetoothデータ送信" />
+         android:text="チャンネル変更" />
 
       <Button
          android:id="@+id/button4"
@@ -42,6 +42,14 @@
          android:layout_alignRight="@+id/button1"
          android:layout_below="@+id/button3"
          android:layout_marginTop="19dp"
-         android:text="POST送信" />
+         android:text="電源 on" />
 
+      <Button
+         android:id="@+id/button5"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+         android:layout_alignRight="@+id/button1"
+         android:layout_below="@+id/button4"
+         android:layout_marginTop="19dp"
+         android:text="ボリューム up" />
 </RelativeLayout>

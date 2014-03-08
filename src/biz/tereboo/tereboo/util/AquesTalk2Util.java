@@ -16,6 +16,7 @@ public class AquesTalk2Util {
 
 	private static AquesTalk2Util instance;
 	private static AquesTalk2 aquesTalk2;
+	private static AudioTrack audioTrack = null;
 
 	private static Handler handler = new Handler();
 	//再生完了時のコールバック実行
@@ -89,8 +90,16 @@ public class AquesTalk2Util {
 	 * @param wav
 	 */
 	private static void playAudioTrack(byte[] wav){
+		if(audioTrack != null){
+			//ステータス確認
+			Log.i(TAG,"audioTrack:"+audioTrack.getState());
+			if(AudioTrack.PLAYSTATE_PLAYING == audioTrack.getState()){
+				//再生中なら無視
+				return;
+			}
+		}
 
-		AudioTrack audioTrack = new AudioTrack(
+		audioTrack = new AudioTrack(
                 AudioManager.STREAM_MUSIC,
                 8000,//サンプリング周波数
                 AudioFormat.CHANNEL_CONFIGURATION_MONO,//モノラル

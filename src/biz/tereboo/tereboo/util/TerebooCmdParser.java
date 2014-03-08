@@ -22,6 +22,9 @@ public class TerebooCmdParser {
 			add("テレブー");
 			add("セレブ");
 			add("テレビ");
+			add("エレブー");
+			add("web");
+			add("11");
 		}
 	};
 
@@ -51,6 +54,7 @@ public class TerebooCmdParser {
 			put("テレ東をみせて", 		COMMAND_CHANNEL_TVTOKYO);
 			put("フジテレビを見せて", 	COMMAND_CHANNEL_FUJITV);
 			put("フジテレビをみせて", 	COMMAND_CHANNEL_FUJITV);
+			put("フジをみせて", 		COMMAND_CHANNEL_FUJITV);
 			put("テレ朝を見せて", 		COMMAND_CHANNEL_TV_ASAHI);
 			put("テレ朝をみせて", 		COMMAND_CHANNEL_TV_ASAHI);
 			put("日テレを見せて", 		COMMAND_CHANNEL_NTV);
@@ -70,6 +74,10 @@ public class TerebooCmdParser {
 			put("しりとりをやろうよ", "shiritori_start");
 			put("しりとりは終わり", "shiritori_stop");
 			put("しりとりはおわり", "shiritori_stop");
+
+			//雑談モード
+			put("雑談をしようよ", "zatudan_start");
+			put("雑談は終わり", "zatudan_stop");
 		}
 	};
 

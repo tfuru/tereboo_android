@@ -56,6 +56,11 @@ public class MainActivity extends Activity{
     private Runnable shiritoriCallback = null;
 	private CookieStore shiritoriCookieStore = null;
 
+	//雑談モード
+    private boolean zatudanMode = false;
+    private Runnable zatudanCallback = null;
+	private CookieStore zatudanCookieStore = null;
+
 	//会話のリソースID
 	private static final int speechResID = R.raw.aq_yukkuri;
 	private static final int speechSpeed = 100;
@@ -108,7 +113,7 @@ public class MainActivity extends Activity{
 			@Override
 			public void onClick(View v) {
 				//Bluetooth でデータ送信
-				byte[] send = "c tbs\n".getBytes();
+				byte[] send = "c fujitv\n".getBytes();
 				bluetoothUtil.writeChatService(send);
 			}
 		});
@@ -116,17 +121,20 @@ public class MainActivity extends Activity{
         ((Button) findViewById(R.id.button4)).setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-
-				//HTTPでデータ送信
-				String url = "http://tereboo.biz/tfuru/channel.php";
-				HttpPostTask postTask = new HttpPostTask(getApplicationContext(), url, postHandler);
-				postTask.addPostParam("type", "channel");
-				postTask.addPostParam("cmd", "tbs");
-				postTask.addPostParam("q", "テレブ tbsに変えて");
-				postTask.execute();
-
+				//Bluetooth でデータ送信
+				byte[] send = "p on\n".getBytes();
+				bluetoothUtil.writeChatService(send);
 			}
 		});
+
+        ((Button) findViewById(R.id.button5)).setOnClickListener(new View.OnClickListener() {
+ 			@Override
+ 			public void onClick(View v) {
+ 				//Bluetooth でデータ送信
+ 				byte[] send = "v up\n".getBytes();
+ 				bluetoothUtil.writeChatService(send);
+ 			}
+ 		});
     }
 
     @Override
@@ -173,8 +181,24 @@ public class MainActivity extends Activity{
 
 		@Override
 		public void onError(int error) {
-			// TODO Auto-generated method stub
+			Toast.makeText(getApplicationContext(), "認識 エラー", Toast.LENGTH_SHORT).show();
+			Runnable callback = null;
+			/*
+			if( (shiritoriMode == true) ||(zatudanMode == true) ){
+				callback = new Runnable() {
+					@Override
+					public void run() {
+						try{
+							Thread.sleep(500);
+						}catch(Exception e){
 
+						}
+						//再度 音声認識モードになる
+						speechRecognizerUtil.start();
+					}
+				};
+			}*/
+			aquesTalk2Util.speech("ききとれませんでした。", speechResID, speechSpeed, callback);
 		}
 
 		@Override
@@ -197,6 +221,22 @@ public class MainActivity extends Activity{
 					//しりとり中 なのでワードだけ送信
 					q = results.get(0);
 					TerebooApiUtil.shiritori(getApplicationContext(), siritoriHandler, shiritoriCookieStore, q, true);
+				}
+				return;
+			}
+			//雑談モード
+			if(zatudanMode == true){
+				//雑談モード中
+				if("zatudan_stop".equals(cmd)){
+					//雑談モード終了
+					// "テレブー 雑談はおわり" で終了
+					zatudanMode = false;
+					zatudanCookieStore.clear();
+					TerebooApiUtil.shiritori(getApplicationContext(), zatudanHandler, zatudanCookieStore, q, false);
+				}else{
+					//雑談中 なのでワードだけ送信
+					q = results.get(0);
+					TerebooApiUtil.shiritori(getApplicationContext(), zatudanHandler, zatudanCookieStore, q, true);
 				}
 				return;
 			}
@@ -272,6 +312,12 @@ public class MainActivity extends Activity{
 					q = "しりとりをやろうよ";
 					TerebooApiUtil.shiritori(getApplicationContext(), siritoriHandler, shiritoriCookieStore, q, true);
 				}
+				else if( "zatudan_start".equals(cmd) ){
+					//雑談 モードに入る
+					zatudanMode = true;
+					q = "ざつだんをしようよ";
+					TerebooApiUtil.shiritori(getApplicationContext(), zatudanHandler, zatudanCookieStore, q, true);
+				}
 				else if( "buy".equals(cmd) ){
 					//これ買って
 					// サーバにPOSTして その時間の 現在チャンネルの番組の商品を探して 購入させる？
@@ -279,15 +325,17 @@ public class MainActivity extends Activity{
 			}
 			else{
 				Toast.makeText(getApplicationContext(), "認識 コマンドを認識できませんでした", Toast.LENGTH_SHORT).show();
-
-				Runnable callback = new Runnable() {
+				Runnable callback = null;
+				/*
+				callback = new Runnable() {
 					@Override
 					public void run() {
 						//再度 音声認識モードになる
 						speechRecognizerUtil.start();
 					}
 				};
-				aquesTalk2Util.speech("ごめんなさい。ききとれませんでした。", speechResID, speechSpeed, callback);
+				*/
+				aquesTalk2Util.speech("ききとれなかったぶー", speechResID, speechSpeed, callback);
 			}
 		}
     };
@@ -355,26 +403,79 @@ public class MainActivity extends Activity{
 				Log.d(TAG, "shiritoriMode:"+shiritoriMode+" yomi:"+yomi);
 
 				//yomiの値を音声合成で出力する
-				if(shiritoriMode == true){
-					//しりとりモードの場合だけ、連続音声認識
-					shiritoriCallback = new Runnable() {
-						@Override
-						public void run() {
-							if(shiritoriMode == true){
-								//連続音声認識
-								Log.d(TAG, "speech callback");
-								speechRecognizerUtil.start();
-							}
-						}
-					};
-				}
-
-				aquesTalk2Util.speech(yomi, speechResID, speechSpeed, shiritoriCallback);
+				this.speech(yomi);
 			}catch (Exception e) {
 				// TODO: handle exception
 			}
 		}
 
+		private void speech(String yomi){
+			//yomiの値を音声合成で出力する
+			if(shiritoriMode == true){
+				//しりとりモードの場合だけ、連続音声認識
+				shiritoriCallback = new Runnable() {
+					@Override
+					public void run() {
+						if(shiritoriMode == true){
+							//連続音声認識
+							Log.d(TAG, "speech callback");
+							speechRecognizerUtil.start();
+						}
+					}
+				};
+			}
+
+			aquesTalk2Util.speech(yomi, speechResID, speechSpeed, shiritoriCallback);
+		}
+
+		@Override
+		public void onPostFailed(int statusCode, String response) {
+			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
+		}
+	};
+
+	/** 雑談を受け取る
+	 *
+	 */
+	HttpPostTask.HttpPostHandler zatudanHandler = new HttpPostTask.HttpPostHandler(){
+		@Override
+		public void onPostSuccess(int statusCode, String response,CookieStore cookieStore) {
+			//雑談の返事をJSONで受け取る
+			try{
+				//継続の為クッキーを保存
+				zatudanCookieStore = cookieStore;
+
+				JSONObject rootObj = new JSONObject(response);
+				//String utt = rootObj.getString("utt");
+				String yomi = rootObj.getString("yomi");
+
+				Toast.makeText(getApplicationContext(), "yomi:"+yomi, Toast.LENGTH_SHORT).show();
+				Log.d(TAG, "zatudanMode:"+zatudanMode+" yomi:"+yomi);
+
+				speech(yomi);
+			}catch (Exception e) {
+				// TODO: handle exception
+			}
+		}
+
+		//yomiの値を音声合成で出力する
+		private void speech(String yomi){
+			if(zatudanMode == true){
+				//しりとりモードの場合だけ、連続音声認識
+				zatudanCallback = new Runnable() {
+					@Override
+					public void run() {
+						if(zatudanMode == true){
+							//連続音声認識
+							Log.d(TAG, "speech callback");
+							speechRecognizerUtil.start();
+						}
+					}
+				};
+			}
+
+			aquesTalk2Util.speech(yomi, speechResID, speechSpeed, zatudanCallback);
+		}
 		@Override
 		public void onPostFailed(int statusCode, String response) {
 			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
