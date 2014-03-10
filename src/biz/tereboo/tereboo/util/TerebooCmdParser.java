@@ -39,8 +39,12 @@ public class TerebooCmdParser {
 	public static String COMMAND_CHANNEL_MXTV = "mxtv";
 	public static String COMMAND_CHANNEL_TELETAMA = "teletama";
 
+	public static String COMMAND_CHANNEL_VOLUME_UP = "volume_up";
+	public static String COMMAND_CHANNEL_VOLUME_DOWN = "volume_down";
+	public static String COMMAND_CHANNEL_VOLUME_MUTE = "volume_mute";
+
 	//コマンド対象 コマンド内容として認識する対象文字列
-	private static Map<String,String> COMMANDS = new HashMap<String, String>(){
+	public static Map<String,String> COMMANDS = new HashMap<String, String>(){
 		{
 			put("ただいま", "tadaima");
 			put("おやすみ", "oyasumi");
@@ -48,26 +52,21 @@ public class TerebooCmdParser {
 			put("これ買って","buy");
 
 			//各放送局コマンド
-			put("tbsを見せて", 		COMMAND_CHANNEL_TBS);
-			put("tbsをみせて", 		COMMAND_CHANNEL_TBS);
-			put("テレ東を見せて",	 	COMMAND_CHANNEL_TVTOKYO);
-			put("テレ東をみせて", 		COMMAND_CHANNEL_TVTOKYO);
-			put("フジテレビを見せて", 	COMMAND_CHANNEL_FUJITV);
-			put("フジテレビをみせて", 	COMMAND_CHANNEL_FUJITV);
-			put("フジをみせて", 		COMMAND_CHANNEL_FUJITV);
-			put("テレ朝を見せて", 		COMMAND_CHANNEL_TV_ASAHI);
-			put("テレ朝をみせて", 		COMMAND_CHANNEL_TV_ASAHI);
-			put("日テレを見せて", 		COMMAND_CHANNEL_NTV);
-			put("日テレをみせて", 		COMMAND_CHANNEL_NTV);
-			put("nhkを見せて", 		COMMAND_CHANNEL_NHK);
-			put("nhkをみせて", 		COMMAND_CHANNEL_NHK);
-			put("いいテレを見せて", 	COMMAND_CHANNEL_E_TELE);
-			put("いいテレをみせて", 	COMMAND_CHANNEL_E_TELE);
+			put("tbs", 		COMMAND_CHANNEL_TBS);
+			put("テレ東",	 	COMMAND_CHANNEL_TVTOKYO);
+			put("フジテレビ", 	COMMAND_CHANNEL_FUJITV);
+			put("テレ朝", 	COMMAND_CHANNEL_TV_ASAHI);
+			put("日テレ", 	 COMMAND_CHANNEL_NTV);
+			put("エヌエイチケ", COMMAND_CHANNEL_NHK);
+			put("いいテレ", 	 COMMAND_CHANNEL_E_TELE);
 
-			put("mxを見せて", 		COMMAND_CHANNEL_MXTV);
-			put("mxをみせて", 		COMMAND_CHANNEL_MXTV);
-			put("テレ玉を見せて", 		COMMAND_CHANNEL_TELETAMA);
-			put("テレ玉をみせて", 		COMMAND_CHANNEL_TELETAMA);
+			put("mx", 		COMMAND_CHANNEL_MXTV);
+			put("テレ玉", 	COMMAND_CHANNEL_TELETAMA);
+
+			//音 関係
+			put("ボリュームを上げて", 	COMMAND_CHANNEL_VOLUME_UP);
+			put("ボリュームを下げて", 	COMMAND_CHANNEL_VOLUME_DOWN);
+			put("ミュートにして", 		COMMAND_CHANNEL_VOLUME_MUTE);
 
 			//しりとりモード
 			put("しりとりをしようよ", "shiritori_start");
@@ -78,6 +77,16 @@ public class TerebooCmdParser {
 			//雑談モード
 			put("雑談をしようよ", "zatudan_start");
 			put("雑談は終わり", "zatudan_stop");
+
+			//カテゴリー
+			put("ドラマ", "drama");
+			put("スポーツ", "sport");
+			put("ニュース", "news");
+			put("アニメ", "anime");
+			put("ゴルフ", "golf");
+
+			//人気番組
+			put("人気番組", "livetter_hot");
 		}
 	};
 

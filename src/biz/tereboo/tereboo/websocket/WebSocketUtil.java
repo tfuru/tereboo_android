@@ -5,7 +5,11 @@ import java.net.URI;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
+import biz.tereboo.tereboo.util.AquesTalk2Util;
+import biz.tereboo.tereboo.util.SpeechRecognizerUtil;
+import biz.tereboo.tereboo.util.SpeechRecognizerUtil.SpeechRecognizerUtilEventsListener;
 import android.content.Context;
+import android.speech.SpeechRecognizer;
 import android.util.Log;
 
 public class WebSocketUtil {
@@ -15,7 +19,18 @@ public class WebSocketUtil {
 	private WebSocketClient client;
 	private WebSocketUtilEventsListener listener;
 
-	public WebSocketUtil(Context context,String url,WebSocketUtilEventsListener listener){
+	private static WebSocketUtil instance;
+
+	public static WebSocketUtil getInstance(Context context,String url,WebSocketUtilEventsListener listener) {
+		if (instance == null) {
+			synchronized(SpeechRecognizerUtil.class) {
+				instance = new WebSocketUtil(context, url,listener);
+		    }
+		}
+	    return instance;
+	}
+
+	private WebSocketUtil(Context context,String url,WebSocketUtilEventsListener listener){
 		this.context = context;
 		this.listener = listener;
 		try{
@@ -77,6 +92,13 @@ public class WebSocketUtil {
 		this.client.send(txt);
 	}
 
+	/** Socketの状態
+	 *
+	 * @return
+	 */
+	public boolean isClosed(){
+		return this.client.getConnection().isClosed();
+	}
 	/** イベントリスナー
 	 *
 	 * @author furukawanobuyuki

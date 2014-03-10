@@ -1,5 +1,7 @@
 package biz.tereboo.tereboo.bluetooth;
 
+import org.java_websocket.handshake.ServerHandshake;
+
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -25,16 +27,19 @@ public class BluetoothUtil {
 	private static BluetoothDevieFoundReceiverEventsListener eventsListener;
 	private static BluetoothChatService chatService = null;
 
-	private BluetoothUtil(Context context){
+	private static BluetoothUtilEventsListener listener;
+
+	private BluetoothUtil(Context context,BluetoothUtilEventsListener listener){
 		this.context = context;
+		this.listener = listener;
 		this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		this.chatService = new BluetoothChatService(context, chatServicehandler);
 	}
 
-	public static BluetoothUtil getInstance(Context context){
+	public static BluetoothUtil getInstance(Context context,BluetoothUtilEventsListener listener){
 		if (instance == null) {
 			synchronized(AquesTalk2Util.class) {
-				instance = new BluetoothUtil(context);
+				instance = new BluetoothUtil(context,listener);
 		    }
 		}
 		return instance;
@@ -196,17 +201,17 @@ public class BluetoothUtil {
                 break;
             case BluetoothChatService.MESSAGE_WRITE:
                 byte[] writeBuf = (byte[]) msg.obj;
-                // construct a string from the buffer
                 String writeMessage = new String(writeBuf);
                 Toast.makeText(context, "writeMessage "+ writeMessage, Toast.LENGTH_SHORT).show();
-                //mConversationArrayAdapter.add("Me:  " + writeMessage);
                 break;
             case BluetoothChatService.MESSAGE_READ:
                 byte[] readBuf = (byte[]) msg.obj;
-                // construct a string from the valid bytes in the buffer
                 String readMessage = new String(readBuf, 0, msg.arg1);
                 Toast.makeText(context, "readMessage "+ readMessage, Toast.LENGTH_SHORT).show();
-                //mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
+
+                //リスナー通知
+                listener.onMessage(readBuf, 0, msg.arg1);
+
                 break;
             case BluetoothChatService.MESSAGE_DEVICE_NAME:
                 // save the connected device's name
@@ -220,4 +225,14 @@ public class BluetoothUtil {
             }
         }
    };
+
+	/** イベントリスナー
+	 *
+	 * @author furukawanobuyuki
+	 *
+	 */
+	public static abstract class BluetoothUtilEventsListener {
+		//メッセージが届いた
+		public abstract void onMessage(byte[] message,int offset,int length);
+	}
 }

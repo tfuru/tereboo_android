@@ -1,11 +1,14 @@
 package biz.tereboo.tereboo;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.http.client.CookieStore;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -15,10 +18,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.webkit.WebView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 import biz.tereboo.tereboo.bluetooth.BluetoothUtil;
+import biz.tereboo.tereboo.bluetooth.BluetoothUtil.BluetoothUtilEventsListener;
 import biz.tereboo.tereboo.bluetooth.DeviceListActivity;
 import biz.tereboo.tereboo.http.HttpPostTask;
 import biz.tereboo.tereboo.util.AquesTalk2Util;
@@ -30,6 +39,9 @@ import bz.tereboo.tereboo.R;
 
 public class MainActivity extends Activity{
 	private static final String TAG = "MainActivity";
+
+	//ユーザーID
+	public String userID = "0";
 
 	//UI更新用のハンドラー
 	private Handler mainHandler = new Handler();
@@ -61,9 +73,29 @@ public class MainActivity extends Activity{
     private Runnable zatudanCallback = null;
 	private CookieStore zatudanCookieStore = null;
 
+	//チャンネル 共有
+	public boolean channelShareMode = false;
+    private Runnable channelShareCallback = null;
+	private CookieStore channelShareCookieStore = null;
+	public String channelShareChannel = null;
+	public String channelShareTxt = null;
+
+	//いしだ カテゴリ1
+	private CookieStore ishidaCookieStore = null;
+
 	//会話のリソースID
-	private static final int speechResID = R.raw.aq_yukkuri;
+	private static final int speechResID = R.raw.ar_f4;
 	private static final int speechSpeed = 100;
+
+	//アクションログ
+	private ArrayAdapter<String> logAdapter;
+	private List<String> logs = new ArrayList<String>();
+
+	private int retryCnt = 0;
+	private static int MaxRetryCnt = 2;
+
+	//選択中のチャンネル
+	private static String selectChannel = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,12 +106,12 @@ public class MainActivity extends Activity{
         aquesTalk2Util = AquesTalk2Util.getInstance(this);
 
         //Bluetoothの状態の確認
-        bluetoothUtil = BluetoothUtil.getInstance(this);
+        bluetoothUtil = BluetoothUtil.getInstance(this,bluetoothUtilEventsListener);
         if(false == bluetoothUtil.isSupport()){
         	//Bluetooth 未対応端末
         	//TODO アラーを表示してアプリ終了
         	Log.i(TAG,"Bluetooth 未対応端末でした");
-        	Toast.makeText(getApplicationContext(), "Bluetooth 未対応端末のようです。", Toast.LENGTH_SHORT).show();
+        	//Toast.makeText(getApplicationContext(), "Bluetooth 未対応端末のようです。", Toast.LENGTH_SHORT).show();
         	this.finish();
         	return;
         }
@@ -90,7 +122,7 @@ public class MainActivity extends Activity{
         }
 
         //WebSocket
-        this.webSocketUtil = new WebSocketUtil(getApplicationContext(),webSocketServerURL,this.webSocketEventsListener);
+        this.webSocketUtil = WebSocketUtil.getInstance(getApplicationContext(),webSocketServerURL,this.webSocketEventsListener);
         this.webSocketUtil.connect();
 
         ((Button) findViewById(R.id.button1)).setOnClickListener(new View.OnClickListener() {
@@ -109,32 +141,17 @@ public class MainActivity extends Activity{
 			}
 		});
 
-        ((Button) findViewById(R.id.button3)).setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				//Bluetooth でデータ送信
-				byte[] send = "c fujitv\n".getBytes();
-				bluetoothUtil.writeChatService(send);
-			}
-		});
-
-        ((Button) findViewById(R.id.button4)).setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				//Bluetooth でデータ送信
-				byte[] send = "p on\n".getBytes();
-				bluetoothUtil.writeChatService(send);
-			}
-		});
-
-        ((Button) findViewById(R.id.button5)).setOnClickListener(new View.OnClickListener() {
+        //WebViewを閉じる
+        ((Button) findViewById(R.id.btnWebViewClose)).setOnClickListener(new View.OnClickListener() {
  			@Override
  			public void onClick(View v) {
- 				//Bluetooth でデータ送信
- 				byte[] send = "v up\n".getBytes();
- 				bluetoothUtil.writeChatService(send);
+ 				//WebView を 隠す
+ 				((RelativeLayout)findViewById(R.id.webViewContainer1)).setVisibility(View.GONE);
  			}
  		});
+
+        //リストビューを初期化
+        initLogListView();
     }
 
     @Override
@@ -152,8 +169,12 @@ public class MainActivity extends Activity{
         super.onDestroy();
         // Bluetooth 接続を終了
         this.bluetoothUtil.closeChatService();
-        //WebSocket 切断
-        this.webSocketUtil.close();
+        try{
+        	//WebSocket 切断
+        	this.webSocketUtil.close();
+        }catch(Exception e){
+
+        }
     }
 
     /** Bluetooth デバイス一覧
@@ -171,6 +192,14 @@ public class MainActivity extends Activity{
         return true;
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        //ユーザーID切り替え
+        userID = ("0".equals(userID))?"1":"0";
+        //Toast.makeText(getApplicationContext(), "userID:"+userID, Toast.LENGTH_SHORT).show();
+        return false;
+    }
+
     private SpeechRecognizerUtil.SpeechRecognizerUtilEventsListener speechReclistener = new  SpeechRecognizerUtil.SpeechRecognizerUtilEventsListener(){
 
 		@Override
@@ -181,28 +210,35 @@ public class MainActivity extends Activity{
 
 		@Override
 		public void onError(int error) {
-			Toast.makeText(getApplicationContext(), "認識 エラー", Toast.LENGTH_SHORT).show();
-			Runnable callback = null;
-			/*
-			if( (shiritoriMode == true) ||(zatudanMode == true) ){
-				callback = new Runnable() {
-					@Override
-					public void run() {
-						try{
-							Thread.sleep(500);
-						}catch(Exception e){
+			//リトライ回数を越えてしまった場合何もしない
+			if(retryCnt > MaxRetryCnt){
+				//Toast.makeText(getApplicationContext(), "リトライ 終了", Toast.LENGTH_SHORT).show();
+				return;
+			}
 
-						}
-						//再度 音声認識モードになる
-						speechRecognizerUtil.start();
+			//Toast.makeText(getApplicationContext(), "認識 エラー", Toast.LENGTH_SHORT).show();
+			Runnable callback = new Runnable() {
+				@Override
+				public void run() {
+					try{
+						Thread.sleep(500);
+					}catch(Exception e){
+
 					}
-				};
-			}*/
-			aquesTalk2Util.speech("ききとれませんでした。", speechResID, speechSpeed, callback);
+					//再度 音声認識モードになる
+					speechRecognizerUtil.start();
+				}
+			};
+
+			effectSpeech("んー？なに？", speechResID, speechSpeed-20, callback);
+			retryCnt++;
 		}
 
 		@Override
 		public void onResults(List<String> results) {
+			//リトライ回数をResetする
+			retryCnt = 0;
+
 			//音声認識 終了
 			//コマンド解析
 			Map<String,String> result = TerebooCmdParser.parse(results);
@@ -241,70 +277,155 @@ public class MainActivity extends Activity{
 				return;
 			}
 
+			//チャンネル共有
+			if(channelShareMode == true){
+				//みる,みない で返事
+				if( isChannelShareMiru(results) ){
+					// チャンネルをかえるね
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							//Bluetoothでチャンネル変更
+							String tmp = "c "+channelShareChannel+"\n";
+							bluetoothUtil.writeChatService( tmp.getBytes() );
+						}
+					};
+					effectSpeech("ちゃんねるをかえるね", speechResID, speechSpeed, callback);
+					channelShareMode = false;
+					retryCnt = 0;
+				}
+				else if( isChannelShareMinai(results) ){
+					//　みないのー。
+					effectSpeech("みないんだー", speechResID, speechSpeed);
+					channelShareMode = false;
+					retryCnt = 0;
+				}
+				else{
+					//リトライ回数を越えてしまった場合何もしない
+					if(retryCnt > MaxRetryCnt){
+						//Toast.makeText(getApplicationContext(), "リトライ 終了", Toast.LENGTH_SHORT).show();
+						return;
+					}
+					//ここで失敗した場合は リトライ
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							try{
+								Thread.sleep(500);
+							}catch(Exception e){
+
+							}
+							//再度 音声認識モードになる
+							speechRecognizerUtil.start();
+						}
+					};
+					effectSpeech("みる？", speechResID, speechSpeed, callback);
+					retryCnt++;
+				}
+
+				return;
+			}
+
 			if(cmd != null){
-				Toast.makeText(getApplicationContext(), "認識 コマンド:"+cmd, Toast.LENGTH_SHORT).show();
+				//Toast.makeText(getApplicationContext(), "認識 コマンド:"+cmd, Toast.LENGTH_SHORT).show();
 				//TOTD APIサーバーへ通知してレスポンスを貰う
 				//TODO APIサーバからのレスポンスを音声合成
 				if( "tadaima".equals(cmd) ){
 					//Toast.makeText(getApplicationContext(), "speech", Toast.LENGTH_SHORT).show();
-					aquesTalk2Util.speech("おかえり、てれびつけるね。", speechResID, speechSpeed);
-
-					//BluetoothでテレビON
-					bluetoothUtil.writeChatService("p on\n".getBytes());
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							//BluetoothでテレビON
+							bluetoothUtil.writeChatService("p on\n".getBytes());
+						}
+					};
+					effectSpeech("おかえり、てれびつけるね。", speechResID, speechSpeed, callback);
 				}
 				else if( "oyasumi".equals(cmd) ){
 					//Toast.makeText(getApplicationContext(), "speech", Toast.LENGTH_SHORT).show();
-					aquesTalk2Util.speech("おやすみなさい。", speechResID, speechSpeed);
-
-					//Bluetooth で テレビ OFF
-					bluetoothUtil.writeChatService("p off\n".getBytes());
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							//Bluetooth で テレビ OFF
+							bluetoothUtil.writeChatService("p off\n".getBytes());
+						}
+					};
+					effectSpeech("おやすみなさい。", speechResID, speechSpeed, callback);
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TBS.equals(cmd) ){
-					aquesTalk2Util.speech("てぃーびーえすにするね。", speechResID, speechSpeed);
+					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_TBS;
+					effectSpeech("てぃーびーえすにするね。", speechResID, speechSpeed);
 
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c tbs\n".getBytes());
+
+
+					//チャンネルシェア
+					channelShare("てぃーびーえす");
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TVTOKYO.equals(cmd) ){
-					aquesTalk2Util.speech("てれとうにするね。", speechResID, speechSpeed);
+					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_TVTOKYO;
+					effectSpeech("てれとうにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c tvtokyo\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_FUJITV.equals(cmd) ){
-					aquesTalk2Util.speech("ふぃじてれびにするね。", speechResID, speechSpeed);
+					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_FUJITV;
+					effectSpeech("ふぃじてれびにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c fujitv\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TV_ASAHI.equals(cmd) ){
-					aquesTalk2Util.speech("てれあさにするね。", speechResID, speechSpeed);
+					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_TV_ASAHI;
+					effectSpeech("てれあさにするね。", speechResID, speechSpeed);
 
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c tv-asahi\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_NTV.equals(cmd) ){
-					aquesTalk2Util.speech("にってれにするね。", speechResID, speechSpeed);
+					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_NTV;
+					effectSpeech("にってれにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c ntv\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_NHK.equals(cmd) ){
-					aquesTalk2Util.speech("えぬえちけーにするね。", speechResID, speechSpeed);
+					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_NHK;
+					effectSpeech("えぬえちけーにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c nhk\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_E_TELE.equals(cmd) ){
-					aquesTalk2Util.speech("いーてれにするね。", speechResID, speechSpeed);
+					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_E_TELE;
+					effectSpeech("いーてれにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c e-tele\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_MXTV.equals(cmd) ){
-					aquesTalk2Util.speech("えむえっくすにするね。", speechResID, speechSpeed);
+					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_MXTV;
+					effectSpeech("えむえっくすにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c mxtv\n".getBytes());
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TELETAMA.equals(cmd) ){
-					aquesTalk2Util.speech("てれたまにするね。", speechResID, speechSpeed);
+					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_TELETAMA;
+					effectSpeech("てれたまにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c teletama\n".getBytes());
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_VOLUME_UP.equals(cmd) ){
+					//Bluetooth で ボリュームをあげる
+					effectSpeech("ぼりゅーむをあげるね。", speechResID, speechSpeed);
+					bluetoothUtil.writeChatService("v up\n".getBytes());
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_VOLUME_DOWN.equals(cmd) ){
+					//Bluetooth で ボリュームをさげる
+					effectSpeech("ぼりゅーむをさげるね。", speechResID, speechSpeed);
+					bluetoothUtil.writeChatService("v down\n".getBytes());
+				}
+				else if( TerebooCmdParser.COMMAND_CHANNEL_VOLUME_MUTE.equals(cmd) ){
+					//Bluetooth で ボリュームをさげる
+					effectSpeech("ぼりゅーむをみゅーとにするね。", speechResID, speechSpeed);
+					bluetoothUtil.writeChatService("v mute\n".getBytes());
 				}
 				else if( "shiritori_start".equals(cmd) ){
 					//しりとり モードに入る
@@ -322,20 +443,32 @@ public class MainActivity extends Activity{
 					//これ買って
 					// サーバにPOSTして その時間の 現在チャンネルの番組の商品を探して 購入させる？
 				}
+				else if( "drama".equals(cmd) ){
+					// サーバにPOSTして その時間の ドラマを検索してチャンネル切り替え
+					TerebooApiUtil.ishida_category2(getApplicationContext(), ishidaDramaHandler,"ドラマ");
+				}
+				else if( "sport".equals(cmd) ){
+					// サーバにPOSTして その時間の スポーツ を検索してチャンネル切り替え
+					TerebooApiUtil.ishida_category2(getApplicationContext(), ishidaSportHandler,"スポーツ");
+				}
+				else if( "news".equals(cmd) ){
+					// サーバにPOSTして その時間の ニュース を検索してチャンネル切り替え
+					TerebooApiUtil.ishida_category2(getApplicationContext(), ishidaNewsHandler,"ニュース");
+				}
+				else if( "golf".equals(cmd) ){
+					// サーバにPOSTして その時間の ゴルフ を検索してチャンネル切り替え
+					TerebooApiUtil.ishida_category2(getApplicationContext(), ishidaNewsHandler,"ゴルフ");
+				}
+				else if("livetter_hot".equals(cmd)){
+					//人気番組名を取得
+					TerebooApiUtil.livetter_hot(getApplicationContext(), livetterHotHandler);
+				}
 			}
 			else{
-				Toast.makeText(getApplicationContext(), "認識 コマンドを認識できませんでした", Toast.LENGTH_SHORT).show();
-				Runnable callback = null;
-				/*
-				callback = new Runnable() {
-					@Override
-					public void run() {
-						//再度 音声認識モードになる
-						speechRecognizerUtil.start();
-					}
-				};
-				*/
-				aquesTalk2Util.speech("ききとれなかったぶー", speechResID, speechSpeed, callback);
+				//コマンドじゃなかった ので 雑談APIになげてみる
+				//Toast.makeText(getApplicationContext(), "認識 コマンドを認識できませんでした", Toast.LENGTH_SHORT).show();
+				String txt = results.get(0);
+				TerebooApiUtil.shiritori(getApplicationContext(), zatudanHandler, zatudanCookieStore, txt, true);
 			}
 		}
     };
@@ -371,14 +504,14 @@ public class MainActivity extends Activity{
 			Log.d(TAG, "Success statusCode:"+statusCode);
 			Log.d(TAG, response);
 
-			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
+			//Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
 		}
 
 		@Override
 		public void onPostFailed(int statusCode, String response) {
 			// 失敗時レスポンス
 			Log.d(TAG, "Failed statusCode:"+statusCode);
-			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
+			//Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
 		}
     };
 
@@ -399,7 +532,7 @@ public class MainActivity extends Activity{
 				//String utt = rootObj.getString("utt");
 				String yomi = rootObj.getString("yomi");
 
-				Toast.makeText(getApplicationContext(), "yomi:"+yomi, Toast.LENGTH_SHORT).show();
+				//Toast.makeText(getApplicationContext(), "yomi:"+yomi, Toast.LENGTH_SHORT).show();
 				Log.d(TAG, "shiritoriMode:"+shiritoriMode+" yomi:"+yomi);
 
 				//yomiの値を音声合成で出力する
@@ -425,12 +558,12 @@ public class MainActivity extends Activity{
 				};
 			}
 
-			aquesTalk2Util.speech(yomi, speechResID, speechSpeed, shiritoriCallback);
+			effectSpeech(yomi, speechResID, speechSpeed, shiritoriCallback);
 		}
 
 		@Override
 		public void onPostFailed(int statusCode, String response) {
-			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
+			//Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
 		}
 	};
 
@@ -449,7 +582,7 @@ public class MainActivity extends Activity{
 				//String utt = rootObj.getString("utt");
 				String yomi = rootObj.getString("yomi");
 
-				Toast.makeText(getApplicationContext(), "yomi:"+yomi, Toast.LENGTH_SHORT).show();
+				//Toast.makeText(getApplicationContext(), "yomi:"+yomi, Toast.LENGTH_SHORT).show();
 				Log.d(TAG, "zatudanMode:"+zatudanMode+" yomi:"+yomi);
 
 				speech(yomi);
@@ -474,11 +607,11 @@ public class MainActivity extends Activity{
 				};
 			}
 
-			aquesTalk2Util.speech(yomi, speechResID, speechSpeed, zatudanCallback);
+			effectSpeech(yomi, speechResID, speechSpeed, zatudanCallback);
 		}
 		@Override
 		public void onPostFailed(int statusCode, String response) {
-			Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
+			//Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
 		}
 	};
 
@@ -497,16 +630,24 @@ public class MainActivity extends Activity{
 			try {
 				JSONObject rootObj = new JSONObject(message);
 				//TODO 仮フォーマットをパースして画面&音声合成
+				//WebSocketでメッセージが届いた
 				String cmd = rootObj.getString("cmd");
 				if("url".equals(cmd)){
+					final String txt = rootObj.getString("txt");
 					final String url = rootObj.getString("url");
-					//WebSocketでメッセージが届いた
+
 					mainHandler.post(new Runnable() {
 						@Override
 						public void run() {
-							Toast.makeText(getApplicationContext(), "ws url:"+url, Toast.LENGTH_SHORT).show();
+							//Toast.makeText(getApplicationContext(), "ws url:"+url, Toast.LENGTH_SHORT).show();
+							//WebView で ページをを表示する
+							((WebView)findViewById(R.id.webView1)).loadUrl(url);
+							((RelativeLayout)findViewById(R.id.webViewContainer1)).setVisibility(RelativeLayout.VISIBLE);
 						}
 					});
+
+					//通知されたテキストを話す
+					effectSpeech(txt, speechResID, speechSpeed);
 				}
 				else if("txt".equals(cmd)){
 					//テキストだった場合 音声合成してみる
@@ -514,12 +655,31 @@ public class MainActivity extends Activity{
 					mainHandler.post(new Runnable() {
 						@Override
 						public void run() {
-							aquesTalk2Util.speech(txt, speechResID, speechSpeed);
+							effectSpeech(txt, speechResID, speechSpeed);
 						}
 					});
 				}
-
-
+				else if("channel".equals(cmd)){
+					//自分宛てのメッセージだった場合
+					final String uid = rootObj.getString("uid");
+					if(userID.equals(uid) == false) return;
+					//チャンネルだ共有 った場合 音声合成して番組をかえる
+					final String channel = rootObj.getString("channel");
+					//確認用のメッセージ
+					final String txt = rootObj.getString("txt");
+					//チャンネルシェアモードに入る
+					channelShareMode = true;
+					//channel txt
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							//音声認 識開始
+							speechRecognizerUtil.start();
+						}
+					};
+					channelShareChannel = channel;
+					effectSpeech(txt, speechResID, speechSpeed, callback);
+				}
 			} catch (JSONException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -529,6 +689,18 @@ public class MainActivity extends Activity{
 		@Override
 		public void onError(Exception e) {
 			Log.d(TAG, "ws e:"+e.getMessage());
+			//ここで再接続をしたい
+			try{
+				Thread.sleep(500);
+			}catch(Exception ex){
+
+			}
+
+			Log.d(TAG, "webSocket 再接続");
+			//再接続する
+			webSocketUtil = null;
+	        webSocketUtil = WebSocketUtil.getInstance(getApplicationContext(),webSocketServerURL,webSocketEventsListener);
+			webSocketUtil.connect();
 		}
 
 		@Override
@@ -536,4 +708,314 @@ public class MainActivity extends Activity{
 			Log.d(TAG, "ws close:"+code+" "+reason+" "+remote);
 		}
 	};
+
+	/** Bluetooth のリスナー
+	 *
+	 */
+	public BluetoothUtilEventsListener bluetoothUtilEventsListener = new BluetoothUtilEventsListener(){
+
+		@Override
+		public void onMessage(byte[] message,int offset,int length) {
+			//なに？の後音声認識
+			String bleCmd = new String(message, offset, length);
+			if(bleCmd.equals("j on\n")){
+				//ジェスチャーを認識したので音声認識させる
+				Runnable callback = new Runnable() {
+					@Override
+					public void run() {
+						try{
+							Thread.sleep(300);
+						}catch(Exception e){
+
+						}
+						speechRecognizerUtil.start();
+					}
+				};
+				effectSpeech("なに？", speechResID, speechSpeed, callback);
+			}
+		}
+
+	};
+
+	/** チャンネル共有 みる
+	 *
+	 * @param results
+	 * @return
+	 */
+	private static boolean isChannelShareMiru(List<String> results){
+		boolean flg = false;
+		for(String l:results){
+			if(l.equals("みる") || l.equals("見る")){
+				flg = true;
+				break;
+			}
+		}
+		return flg;
+	}
+
+	/** チャンネル共有 みない
+	 *
+	 * @param results
+	 * @return
+	 */
+	private static boolean isChannelShareMinai(List<String> results){
+		boolean flg = false;
+		for(String l:results){
+			if(l.equals("みない") || l.equals("見ない")){
+				flg = true;
+				break;
+			}
+		}
+		return flg;
+	}
+
+	/** ログリストを初期化
+	 *
+	 */
+	private void initLogListView(){
+		ListView lv = (ListView) findViewById(R.id.listView1);
+		logAdapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_expandable_list_item_1, logs);
+
+        lv.setAdapter(logAdapter);
+	}
+
+	/** ログ追加
+	 *
+	 * @param log
+	 */
+	private void addLog(String log){
+		this.logs.add(log);
+		//ListViewを更新
+		logAdapter.notifyDataSetChanged();
+	}
+
+	/** いしだ スポーツ
+	 *
+	 */
+	HttpPostTask.HttpPostHandler ishidaSportHandler = new HttpPostTask.HttpPostHandler(){
+
+		@Override
+		public void onPostSuccess(int statusCode, String response, CookieStore cookieStore) {
+			try {
+				JSONArray rootArray = new JSONArray(response);
+				JSONObject obj = rootArray.getJSONObject(0);
+				if(obj != null){
+					//タイトルとチャンネルを取得
+					String channel = obj.getString("channel");
+					String title = obj.getString("title");
+
+					//おすすめの 番組があったので教える
+					String txt = "おすすめわ"+title+"です。みる？";
+
+					//チャンネルシェアモードに入る
+					channelShareMode = true;
+					//channel txt
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							//音声認 識開始
+							speechRecognizerUtil.start();
+						}
+					};
+					channelShareChannel = channel;
+					effectSpeech(txt, speechResID, speechSpeed, callback);
+				}
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		@Override
+		public void onPostFailed(int statusCode, String response) {
+			// TODO Auto-generated method stub
+
+		}
+
+	};
+
+	/** いしだ ドラマ
+	 *
+	 */
+	HttpPostTask.HttpPostHandler ishidaDramaHandler = new HttpPostTask.HttpPostHandler(){
+
+		@Override
+		public void onPostSuccess(int statusCode, String response, CookieStore cookieStore) {
+			try {
+				JSONArray rootArray = new JSONArray(response);
+				JSONObject obj = rootArray.getJSONObject(0);
+				if(obj != null){
+					//タイトルとチャンネルを取得
+					String channel = obj.getString("channel");
+					String title = obj.getString("title");
+
+					//おすすめの 番組があったので教える
+					String txt = "おすすめわ"+title+"です。みる？";
+
+					//チャンネルシェアモードに入る
+					channelShareMode = true;
+					//channel txt
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							//音声認 識開始
+							speechRecognizerUtil.start();
+						}
+					};
+					channelShareChannel = channel;
+					effectSpeech(txt, speechResID, speechSpeed, callback);
+				}
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		@Override
+		public void onPostFailed(int statusCode, String response) {
+			// TODO Auto-generated method stub
+
+		}
+
+	};
+
+	/** いしだ ニュース
+	 *
+	 */
+	HttpPostTask.HttpPostHandler ishidaNewsHandler = new HttpPostTask.HttpPostHandler(){
+
+		@Override
+		public void onPostSuccess(int statusCode, String response, CookieStore cookieStore) {
+			try {
+				JSONArray rootArray = new JSONArray(response);
+				JSONObject obj = rootArray.getJSONObject(0);
+				if(obj != null){
+					//タイトルとチャンネルを取得
+					String channel = obj.getString("channel");
+					String title = obj.getString("title");
+
+					//おすすめの 番組があったので教える
+					String txt = "おすすめわ"+title+"です。みる？";
+
+					//チャンネルシェアモードに入る
+					channelShareMode = true;
+					//channel txt
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							//音声認 識開始
+							speechRecognizerUtil.start();
+						}
+					};
+					channelShareChannel = channel;
+					effectSpeech(txt, speechResID, speechSpeed, callback);
+				}
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		@Override
+		public void onPostFailed(int statusCode, String response) {
+			// TODO Auto-generated method stub
+
+		}
+
+	};
+
+    /** 人気番組を検索
+     *
+     */
+	HttpPostTask.HttpPostHandler livetterHotHandler = new HttpPostTask.HttpPostHandler(){
+
+		@Override
+		public void onPostSuccess(int statusCode, String response, CookieStore cookieStore) {
+			try {
+				JSONObject obj = new JSONObject(response);
+				if(obj != null){
+					String channel = obj.getString("channel");
+					String title = obj.getString("title");
+
+					//おすすめの 番組があったので教える
+					String txt = "にんきのばんぐみは、"+title+"です。みる？";
+
+					//チャンネルシェアモードに入る
+					channelShareMode = true;
+					//channel txt
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							//音声認 識開始
+							speechRecognizerUtil.start();
+						}
+					};
+					channelShareChannel = channel;
+					effectSpeech(txt, speechResID, speechSpeed, callback);
+				}
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		@Override
+		public void onPostFailed(int statusCode, String response) {
+			// TODO Auto-generated method stub
+
+		}
+
+	};
+
+	//エフェクト付きスピーチ
+	public void effectSpeech(String txt,int resID,int speed){
+		//音声 開始
+		bluetoothUtil.writeChatService("s start\n".getBytes());
+
+		Runnable callback = new Runnable() {
+			@Override
+			public void run() {
+				//音声 停止
+				bluetoothUtil.writeChatService("s end\n".getBytes());
+			}
+		};
+		aquesTalk2Util.speech(txt, speechResID, speechSpeed, callback);
+	}
+
+	public void effectSpeech(String txt,int resID,int speed,final Runnable callback1){
+		Log.d(TAG, "txt:"+txt);
+
+		//音声 開始
+		bluetoothUtil.writeChatService("s start\n".getBytes());
+
+		final Runnable callback = new Runnable() {
+			@Override
+			public void run() {
+				//音声 停止
+				bluetoothUtil.writeChatService("s end\n".getBytes());
+				if(callback1 != null){
+					callback1.run();
+				}
+			}
+		};
+
+		aquesTalk2Util.speech(txt, speechResID, speechSpeed, callback);
+	}
+
+	//友人とのチャンネル共有
+	private void channelShare(String txtSelectChannel){
+		if(userID == "1") return;
+
+		JSONObject kv = new JSONObject();
+		try{
+			kv.put("cmd", "channel");
+			kv.put("uid", (userID.equals("0"))?"1":"0");
+			kv.put("channel", selectChannel);
+			kv.put("txt", "ともだちが"+txtSelectChannel+"をみてるよ、いっしょに、みる？");
+		}catch(Exception e){
+
+		}
+		webSocketUtil.send( kv.toString() );
+	}
 }

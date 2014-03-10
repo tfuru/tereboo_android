@@ -2,54 +2,63 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingBottom="@dimen/activity_vertical_margin"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
-    android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".MainActivity" >
 
-     <Button
-         android:id="@+id/button1"
-         android:layout_width="match_parent"
-         android:layout_height="wrap_content"
-         android:layout_alignParentTop="true"
-         android:layout_centerHorizontal="true"
-         android:layout_marginTop="14dp"
-         android:text="音声認識を開始" />
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" >
 
-     <Button
-         android:id="@+id/button2"
-         android:layout_width="match_parent"
-         android:layout_height="wrap_content"
-         android:layout_alignRight="@+id/button1"
-         android:layout_below="@+id/button1"
-         android:layout_marginTop="19dp"
-         android:text="Bluetooth機器検索" />
+        <Button
+            android:id="@+id/button1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="音声認識を開始"
+            android:visibility="visible" />
 
-     <Button
-         android:id="@+id/button3"
-         android:layout_width="match_parent"
-         android:layout_height="wrap_content"
-         android:layout_alignRight="@+id/button1"
-         android:layout_below="@+id/button2"
-         android:layout_marginTop="19dp"
-         android:text="チャンネル変更" />
+        <Button
+            android:id="@+id/button2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="65dp"
+            android:text="Bluetooth機器検索" />
+    </RelativeLayout>
 
-      <Button
-         android:id="@+id/button4"
-         android:layout_width="match_parent"
-         android:layout_height="wrap_content"
-         android:layout_alignRight="@+id/button1"
-         android:layout_below="@+id/button3"
-         android:layout_marginTop="19dp"
-         android:text="電源 on" />
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" >
 
-      <Button
-         android:id="@+id/button5"
-         android:layout_width="match_parent"
-         android:layout_height="wrap_content"
-         android:layout_alignRight="@+id/button1"
-         android:layout_below="@+id/button4"
-         android:layout_marginTop="19dp"
-         android:text="ボリューム up" />
+        <ListView
+            android:id="@+id/listView1"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/tereboo_app_bg" >
+
+        </ListView>
+    </RelativeLayout>
+
+      <RelativeLayout
+          android:id="@+id/webViewContainer1"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:visibility="gone" >
+
+          <WebView
+              android:id="@+id/webView1"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent" />
+
+          <Button
+              android:id="@+id/btnWebViewClose"
+              style="?android:attr/buttonStyleSmall"
+              android:layout_marginTop="14dp"
+              android:layout_marginRight="14dp"
+              android:layout_width="32dp"
+              android:layout_height="32dp"
+              android:layout_alignRight="@+id/webView1"
+              android:layout_alignTop="@+id/webView1"
+              android:background="@drawable/close_r2_c2" />
+
+      </RelativeLayout>
+
 </RelativeLayout>

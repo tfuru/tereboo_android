@@ -104,7 +104,7 @@ public class AquesTalk2Util {
                 8000,//サンプリング周波数
                 AudioFormat.CHANNEL_CONFIGURATION_MONO,//モノラル
                 AudioFormat.ENCODING_PCM_16BIT,//16bitPCM
-                8000*2*60,    // バッファサイズ、ここでは最大１０秒としている
+                8000*2*40,    // バッファサイズ、ここでは最大１０秒としている
                 AudioTrack.MODE_STATIC);
 
 		Log.d(TAG, "completeCallback:"+completeCallback);
@@ -125,11 +125,16 @@ public class AquesTalk2Util {
 					});
 		}
 
-		//音声再生
-		int headerSize = 44;
-		int size = wav.length-headerSize;
-		audioTrack.write(wav, headerSize, size);
-		audioTrack.setNotificationMarkerPosition(size);
-		audioTrack.play();
+		try{
+			//音声再生
+			int headerSize = 44;
+			int size = wav.length-headerSize;
+			audioTrack.write(wav, headerSize, size);
+			audioTrack.setNotificationMarkerPosition(size);
+			audioTrack.play();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
 	}
 }
