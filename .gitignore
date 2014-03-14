@@ -23,6 +23,8 @@ local.properties
 proguard/
 
 # libs
+*.so
 libs/
+
 
 .DS_Store
