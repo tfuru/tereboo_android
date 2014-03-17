@@ -43,6 +43,11 @@ public class TerebooCmdParser {
 	public static String COMMAND_CHANNEL_VOLUME_DOWN = "volume_down";
 	public static String COMMAND_CHANNEL_VOLUME_MUTE = "volume_mute";
 
+	public static String COMMAND_AISATU_START = "aisatu_start";
+	public static String COMMAND_AISATU_STOP = "aisatu_stop";
+	public static String TXT_AISATU_START = "こんにちわ。てれぶーだよ?";
+	public static String TXT_AISATU_STOP = "はーい。";
+
 	//コマンド対象 コマンド内容として認識する対象文字列
 	public static Map<String,String> COMMANDS = new HashMap<String, String>(){
 		{
@@ -75,8 +80,12 @@ public class TerebooCmdParser {
 			put("しりとりはおわり", "shiritori_stop");
 
 			//雑談モード
-			put("雑談をしようよ", "zatudan_start");
-			put("雑談は終わり", "zatudan_stop");
+			put("雑談", "zatudan_start");
+			put("終わり", "zatudan_stop");
+
+			//あいさつモード
+			put("挨拶", COMMAND_AISATU_START);
+			put("終わり", COMMAND_AISATU_STOP);
 
 			//カテゴリー
 			put("ドラマ", "drama");

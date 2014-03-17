@@ -73,6 +73,11 @@ public class MainActivity extends Activity{
     private Runnable zatudanCallback = null;
 	private CookieStore zatudanCookieStore = null;
 
+	//あいさつモード
+    private boolean aisatuMode = false;
+    private Runnable aisatuCallback = null;
+	private CookieStore aisatuCookieStore = null;
+
 	//チャンネル 共有
 	public boolean channelShareMode = false;
     private Runnable channelShareCallback = null;
@@ -277,6 +282,18 @@ public class MainActivity extends Activity{
 				return;
 			}
 
+			//あいさつモード
+			if(aisatuMode == true){
+				//あいさつモード中
+				if(TerebooCmdParser.COMMAND_AISATU_STOP.equals(cmd)){
+					//あいさつモード終了
+					// "テレブー あいさつはおわり" で終了
+					aisatuMode = false;
+					effectSpeech(TerebooCmdParser.TXT_AISATU_STOP, speechResID, speechSpeed);
+				}
+				return;
+			}
+
 			//チャンネル共有
 			if(channelShareMode == true){
 				//みる,みない で返事
@@ -462,6 +479,18 @@ public class MainActivity extends Activity{
 				else if("livetter_hot".equals(cmd)){
 					//人気番組名を取得
 					TerebooApiUtil.livetter_hot(getApplicationContext(), livetterHotHandler);
+				}
+				else if( TerebooCmdParser.COMMAND_AISATU_START.equals(cmd)){
+					//あいさつモード
+					aisatuMode = true;
+					Runnable callback = new Runnable() {
+						@Override
+						public void run() {
+							//挨拶文を再生
+							effectSpeech(TerebooCmdParser.TXT_AISATU_START, speechResID, speechSpeed-30);
+						}
+					};
+					effectSpeech("はーい", speechResID, speechSpeed-20,callback);
 				}
 			}
 			else{
@@ -731,7 +760,13 @@ public class MainActivity extends Activity{
 						speechRecognizerUtil.start();
 					}
 				};
-				effectSpeech("なに？", speechResID, speechSpeed, callback);
+				if(true == aisatuMode){
+					//あいさつモード
+					effectSpeech(TerebooCmdParser.TXT_AISATU_START, speechResID, speechSpeed-30);
+				}
+				else{
+					effectSpeech("なに？", speechResID, speechSpeed, callback);
+				}
 			}
 		}
 
@@ -1018,4 +1053,52 @@ public class MainActivity extends Activity{
 		}
 		webSocketUtil.send( kv.toString() );
 	}
+
+	/** あいさつを受け取る
+	 *
+	 */
+	HttpPostTask.HttpPostHandler aisatuHandler = new HttpPostTask.HttpPostHandler(){
+		@Override
+		public void onPostSuccess(int statusCode, String response,CookieStore cookieStore) {
+			//雑談の返事をJSONで受け取る
+			try{
+				//継続の為クッキーを保存
+				aisatuCookieStore = cookieStore;
+
+				JSONObject rootObj = new JSONObject(response);
+				//String utt = rootObj.getString("utt");
+				String yomi = rootObj.getString("yomi");
+
+				//Toast.makeText(getApplicationContext(), "yomi:"+yomi, Toast.LENGTH_SHORT).show();
+				Log.d(TAG, "aisatuMode:"+aisatuMode+" yomi:"+yomi);
+
+				speech(yomi);
+			}catch (Exception e) {
+				// TODO: handle exception
+			}
+		}
+
+		//yomiの値を音声合成で出力する
+		private void speech(String yomi){
+			if(aisatuMode == true){
+				//連続音声認識
+				aisatuCallback = new Runnable() {
+					@Override
+					public void run() {
+						if(aisatuMode == true){
+							//連続音声認識
+							Log.d(TAG, "speech callback");
+							speechRecognizerUtil.start();
+						}
+					}
+				};
+			}
+
+			effectSpeech(yomi, speechResID, speechSpeed, zatudanCallback);
+		}
+		@Override
+		public void onPostFailed(int statusCode, String response) {
+			//Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
+		}
+	};
 }
