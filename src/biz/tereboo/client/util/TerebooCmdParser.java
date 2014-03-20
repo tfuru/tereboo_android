@@ -1,4 +1,4 @@
-package biz.tereboo.tereboo.util;
+package biz.tereboo.client.util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,6 +28,10 @@ public class TerebooCmdParser {
 		}
 	};
 
+	public static String COMMAND_TADAIMA = "tadaima";
+	public static String COMMAND_OYASUMI = "oyasumi";
+	public static String COMMAND_BUY = "buy";
+
 	public static String COMMAND_CHANNEL_TBS = "tbs";
 	public static String COMMAND_CHANNEL_TVTOKYO = "tvtokyo";
 	public static String COMMAND_CHANNEL_FUJITV = "fujitv";
@@ -43,6 +47,10 @@ public class TerebooCmdParser {
 	public static String COMMAND_CHANNEL_VOLUME_DOWN = "volume_down";
 	public static String COMMAND_CHANNEL_VOLUME_MUTE = "volume_mute";
 
+	public static String COMMAND_SHIRITORI_START = "shiritori_start";
+	public static String COMMAND_SHIRITORI_STOP  = "shiritori_stop";
+	public static String TXT_SHIRITORI_START = "しりとりをやろうよ";
+
 	public static String COMMAND_AISATU_START = "aisatu_start";
 	public static String COMMAND_AISATU_STOP = "aisatu_stop";
 	public static String TXT_AISATU_START = "こんにちわ。てれぶーだよ?";
@@ -51,18 +59,19 @@ public class TerebooCmdParser {
 	//コマンド対象 コマンド内容として認識する対象文字列
 	public static Map<String,String> COMMANDS = new HashMap<String, String>(){
 		{
-			put("ただいま", "tadaima");
-			put("おやすみ", "oyasumi");
+			put("ただいま", COMMAND_TADAIMA);
+			put("おやすみ", COMMAND_OYASUMI);
 
-			put("これ買って","buy");
+			put("買って",COMMAND_BUY);
+			put("欲しい",COMMAND_BUY);
 
 			//各放送局コマンド
-			put("tbs", 		COMMAND_CHANNEL_TBS);
-			put("テレ東",	 	COMMAND_CHANNEL_TVTOKYO);
-			put("フジテレビ", 	COMMAND_CHANNEL_FUJITV);
-			put("テレ朝", 	COMMAND_CHANNEL_TV_ASAHI);
+			put("tbs", 		 COMMAND_CHANNEL_TBS);
+			put("テレ東",	 	 COMMAND_CHANNEL_TVTOKYO);
+			put("フジテレビ", 	 COMMAND_CHANNEL_FUJITV);
+			put("テレ朝", 	 COMMAND_CHANNEL_TV_ASAHI);
 			put("日テレ", 	 COMMAND_CHANNEL_NTV);
-			put("エヌエイチケ", COMMAND_CHANNEL_NHK);
+			put("nhk", 		 COMMAND_CHANNEL_NHK);
 			put("いいテレ", 	 COMMAND_CHANNEL_E_TELE);
 
 			put("mx", 		COMMAND_CHANNEL_MXTV);
@@ -74,10 +83,9 @@ public class TerebooCmdParser {
 			put("ミュートにして", 		COMMAND_CHANNEL_VOLUME_MUTE);
 
 			//しりとりモード
-			put("しりとりをしようよ", "shiritori_start");
-			put("しりとりをやろうよ", "shiritori_start");
-			put("しりとりは終わり", "shiritori_stop");
-			put("しりとりはおわり", "shiritori_stop");
+			put("しりとりをしようよ", COMMAND_SHIRITORI_START);
+			put("しりとりをやろうよ", COMMAND_SHIRITORI_START);
+			put("終わり", COMMAND_SHIRITORI_STOP);
 
 			//雑談モード
 			put("雑談", "zatudan_start");

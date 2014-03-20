@@ -1,9 +1,13 @@
-package biz.tereboo.tereboo;
+package biz.tereboo.client;
+
+import com.facebook.Session;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.view.ViewPager;
-import bz.tereboo.tereboo.R;
+import android.util.Log;
+import bz.tereboo.client.R;
 
 public class TutorialActivity extends Activity {
 	private static final String TAG = TutorialActivity.class.getName();
@@ -18,7 +22,7 @@ public class TutorialActivity extends Activity {
         setContentView(R.layout.activity_tutorial);
 
         //PagerAdapterを設定
-        this.pagerAdapter = new TutorialPagerAdapter( getApplicationContext() );
+        this.pagerAdapter = new TutorialPagerAdapter( this );
         this.viewPager = (ViewPager) findViewById(R.id.viewpager01);
         this.viewPager.setAdapter( this.pagerAdapter );
     }

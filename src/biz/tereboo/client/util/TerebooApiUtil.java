@@ -1,9 +1,9 @@
-package biz.tereboo.tereboo.util;
+package biz.tereboo.client.util;
 
 import org.apache.http.client.CookieStore;
 
 import android.content.Context;
-import biz.tereboo.tereboo.http.HttpPostTask;
+import biz.tereboo.client.http.HttpPostTask;
 
 public class TerebooApiUtil {
 	//APIのディレクトリ

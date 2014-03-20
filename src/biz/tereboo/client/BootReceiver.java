@@ -1,4 +1,4 @@
-package biz.tereboo.tereboo;
+package biz.tereboo.client;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

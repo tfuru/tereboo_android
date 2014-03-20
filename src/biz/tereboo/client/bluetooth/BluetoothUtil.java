@@ -1,4 +1,4 @@
-package biz.tereboo.tereboo.bluetooth;
+package biz.tereboo.client.bluetooth;
 
 import org.java_websocket.handshake.ServerHandshake;
 
@@ -12,7 +12,7 @@ import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.Message;
 import android.widget.Toast;
-import biz.tereboo.tereboo.util.AquesTalk2Util;
+import biz.tereboo.client.util.AquesTalk2Util;
 
 /** Bluetooth関連処理のラッパークラス
  *
@@ -38,7 +38,7 @@ public class BluetoothUtil {
 
 	public static BluetoothUtil getInstance(Context context,BluetoothUtilEventsListener listener){
 		if (instance == null) {
-			synchronized(AquesTalk2Util.class) {
+			synchronized(BluetoothUtil.class) {
 				instance = new BluetoothUtil(context,listener);
 		    }
 		}

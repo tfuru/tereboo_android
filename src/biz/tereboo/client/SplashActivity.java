@@ -1,11 +1,11 @@
-package biz.tereboo.tereboo;
+package biz.tereboo.client;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.Window;
-import bz.tereboo.tereboo.R;
+import bz.tereboo.client.R;
 
 public class SplashActivity extends Activity {
 

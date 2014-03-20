@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="bz.tereboo.tereboo"
+    package="bz.tereboo.client"
     android:versionCode="1"
     android:versionName="1.0" >
 
@@ -19,35 +19,40 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="biz.tereboo.tereboo.SplashActivity"
+            android:name="biz.tereboo.client.SplashActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
-            android:name="biz.tereboo.tereboo.TutorialActivity"
-            android:label="@string/app_name" >
-        </activity>
-        <activity
-            android:name="biz.tereboo.tereboo.MainActivity"
+            android:name="biz.tereboo.client.TutorialActivity"
             android:label="@string/app_name" >
         </activity>
 
-		<!-- Bluetoothデバイス選択  -->
-        <activity android:name="biz.tereboo.tereboo.bluetooth.DeviceListActivity"
+        <activity
+            android:name="biz.tereboo.client.MainActivity"
+            android:label="@string/app_name" >
+        </activity>
+
+        <activity android:name="com.facebook.LoginActivity">
+        </activity>
+
+        <!-- Bluetoothデバイス選択  -->
+        <activity android:name="biz.tereboo.client.bluetooth.DeviceListActivity"
                   android:label="@string/select_device"
                   android:theme="@android:style/Theme.Holo.Dialog"
                   android:configChanges="orientation|keyboardHidden" />
 
         <!-- 端末起動時 のブロードキャスト受け取り -->
-        <receiver android:name="BootReceiver" android:process=":remote">
+        <receiver android:name="biz.tereboo.client.BootReceiver" android:process=":remote">
  			<intent-filter>
  				<action android:name="android.intent.action.BOOT_COMPLETED"/>
  			</intent-filter>
 		</receiver>
-
+        <meta-data android:value="@string/app_id" android:name="com.facebook.sdk.ApplicationId"/>
     </application>
 
 </manifest>

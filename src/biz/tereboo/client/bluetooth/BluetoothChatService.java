@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.tereboo.tereboo.bluetooth;
+package biz.tereboo.client.bluetooth;
 
 import java.io.IOException;
 import java.io.InputStream;

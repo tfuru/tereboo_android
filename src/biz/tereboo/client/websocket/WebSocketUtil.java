@@ -1,13 +1,13 @@
-package biz.tereboo.tereboo.websocket;
+package biz.tereboo.client.websocket;
 
 import java.net.URI;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
-import biz.tereboo.tereboo.util.AquesTalk2Util;
-import biz.tereboo.tereboo.util.SpeechRecognizerUtil;
-import biz.tereboo.tereboo.util.SpeechRecognizerUtil.SpeechRecognizerUtilEventsListener;
+import biz.tereboo.client.util.AquesTalk2Util;
+import biz.tereboo.client.util.SpeechRecognizerUtil;
+import biz.tereboo.client.util.SpeechRecognizerUtil.SpeechRecognizerUtilEventsListener;
 import android.content.Context;
 import android.speech.SpeechRecognizer;
 import android.util.Log;
@@ -23,7 +23,7 @@ public class WebSocketUtil {
 
 	public static WebSocketUtil getInstance(Context context,String url,WebSocketUtilEventsListener listener) {
 		if (instance == null) {
-			synchronized(SpeechRecognizerUtil.class) {
+			synchronized(WebSocketUtil.class) {
 				instance = new WebSocketUtil(context, url,listener);
 		    }
 		}
@@ -59,7 +59,7 @@ public class WebSocketUtil {
 			};
 		}
 		catch(Exception e){
-
+			Log.w(TAG, e.getMessage());
 		}
 	}
 
@@ -75,6 +75,8 @@ public class WebSocketUtil {
 	 */
 	public void close(){
 		this.client.close();
+		this.client = null;
+		this.instance = null;
 	}
 
 	/** バイナリ データ送信

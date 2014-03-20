@@ -1,9 +1,11 @@
-package biz.tereboo.tereboo;
+package biz.tereboo.client;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.apache.http.client.CookieStore;
 import org.java_websocket.client.WebSocketClient;
@@ -11,6 +13,15 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import com.facebook.HttpMethod;
+import com.facebook.Request;
+import com.facebook.RequestAsyncTask;
+import com.facebook.Response;
+import com.facebook.Session;
+import com.facebook.SessionState;
+import com.facebook.model.GraphObject;
+import com.facebook.model.GraphUser;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -23,25 +34,27 @@ import android.view.View;
 import android.webkit.WebView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
-import biz.tereboo.tereboo.bluetooth.BluetoothUtil;
-import biz.tereboo.tereboo.bluetooth.BluetoothUtil.BluetoothUtilEventsListener;
-import biz.tereboo.tereboo.bluetooth.DeviceListActivity;
-import biz.tereboo.tereboo.http.HttpPostTask;
-import biz.tereboo.tereboo.util.AquesTalk2Util;
-import biz.tereboo.tereboo.util.SpeechRecognizerUtil;
-import biz.tereboo.tereboo.util.TerebooApiUtil;
-import biz.tereboo.tereboo.util.TerebooCmdParser;
-import biz.tereboo.tereboo.websocket.WebSocketUtil;
-import bz.tereboo.tereboo.R;
+import biz.tereboo.client.bluetooth.BluetoothUtil;
+import biz.tereboo.client.bluetooth.DeviceListActivity;
+import biz.tereboo.client.bluetooth.BluetoothUtil.BluetoothUtilEventsListener;
+import biz.tereboo.client.facebook.FacebookUtil;
+import biz.tereboo.client.facebook.FacebookUtilInterface;
+import biz.tereboo.client.http.HttpPostTask;
+import biz.tereboo.client.util.AquesTalk2Util;
+import biz.tereboo.client.util.ImageUtil;
+import biz.tereboo.client.util.SpeechRecognizerUtil;
+import biz.tereboo.client.util.TerebooApiUtil;
+import biz.tereboo.client.util.TerebooCmdParser;
+import biz.tereboo.client.websocket.WebSocketUtil;
+import bz.tereboo.client.R;
 
 public class MainActivity extends Activity{
-	private static final String TAG = "MainActivity";
-
-	//ユーザーID
-	public String userID = "0";
+	private static final String TAG = MainActivity.class.getName();
 
 	//UI更新用のハンドラー
 	private Handler mainHandler = new Handler();
@@ -58,6 +71,9 @@ public class MainActivity extends Activity{
 	//WebSocket ラッパークラス
 	private WebSocketUtil webSocketUtil = null;
 	private static final String webSocketServerURL = "ws://153.121.52.22:8000/";
+
+	//Facebook関連処理のユーティリティ
+	private FacebookUtil facebookUtil;
 
 	private static final int REQUEST_ENABLE_BLUETOOTH = 100;
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
@@ -128,23 +144,13 @@ public class MainActivity extends Activity{
 
         //WebSocket
         this.webSocketUtil = WebSocketUtil.getInstance(getApplicationContext(),webSocketServerURL,this.webSocketEventsListener);
-        this.webSocketUtil.connect();
-
-        ((Button) findViewById(R.id.button1)).setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				//音声認 識開始
-				speechRecognizerUtil.start();
-			}
-		});
-
-        ((Button) findViewById(R.id.button2)).setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				//Bluetooth デバイス一覧を表示 & 接続
-				showDeviceList();
-			}
-		});
+    	try{
+    		this.webSocketUtil.connect();
+    	}
+    	catch(Exception e){
+    		Log.e(TAG, e.getMessage());
+    		Toast.makeText(getApplicationContext(), "サーバーとの接続に失敗しました。", Toast.LENGTH_SHORT).show();
+    	}
 
         //WebViewを閉じる
         ((Button) findViewById(R.id.btnWebViewClose)).setOnClickListener(new View.OnClickListener() {
@@ -155,8 +161,16 @@ public class MainActivity extends Activity{
  			}
  		});
 
+        //Facebook関連を初期化する
+        iniFacebook();
+
         //リストビューを初期化
         initLogListView();
+    }
+
+    @Override
+    public void onStart(){
+    	super.onStart();
     }
 
     @Override
@@ -172,14 +186,23 @@ public class MainActivity extends Activity{
     @Override
     public void onDestroy() {
         super.onDestroy();
+    	Log.w(TAG, "onDestroy");
         // Bluetooth 接続を終了
         this.bluetoothUtil.closeChatService();
+        this.bluetoothUtil = null;
+
         try{
         	//WebSocket 切断
         	this.webSocketUtil.close();
+        	this.webSocketUtil = null;
         }catch(Exception e){
-
+        	Log.w(TAG, e.getMessage());
         }
+
+        //aquesTalk2Utilを終了
+        this.aquesTalk2Util = null;
+        //speechRecognizerUtil
+        this.speechRecognizerUtil = null;
     }
 
     /** Bluetooth デバイス一覧
@@ -199,10 +222,24 @@ public class MainActivity extends Activity{
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        //ユーザーID切り替え
-        userID = ("0".equals(userID))?"1":"0";
-        //Toast.makeText(getApplicationContext(), "userID:"+userID, Toast.LENGTH_SHORT).show();
-        return false;
+    	boolean ret = true;
+    	switch (item.getItemId()) {
+    	 case R.id.action_settings:
+    		 //セッティング
+ 			 //ret = true;
+    		 break;
+    	 case R.id.action_bluetooth_connect:
+    		 //テレブーと接続 Bluetooth デバイス一覧を表示 & 接続
+    		 showDeviceList();
+ 			 ret = true;
+    		 break;
+    	 case R.id.action_speech_rec_test:
+    		 //音声認識テスト
+			speechRecognizerUtil.start();
+			ret = true;
+			break;
+    	 }
+        return ret;
     }
 
     private SpeechRecognizerUtil.SpeechRecognizerUtilEventsListener speechReclistener = new  SpeechRecognizerUtil.SpeechRecognizerUtilEventsListener(){
@@ -344,10 +381,13 @@ public class MainActivity extends Activity{
 			}
 
 			if(cmd != null){
+				//コマンドをログに保存
+				addLog(cmd);
+
 				//Toast.makeText(getApplicationContext(), "認識 コマンド:"+cmd, Toast.LENGTH_SHORT).show();
 				//TOTD APIサーバーへ通知してレスポンスを貰う
 				//TODO APIサーバからのレスポンスを音声合成
-				if( "tadaima".equals(cmd) ){
+				if( TerebooCmdParser.COMMAND_TADAIMA.equals(cmd) ){
 					//Toast.makeText(getApplicationContext(), "speech", Toast.LENGTH_SHORT).show();
 					Runnable callback = new Runnable() {
 						@Override
@@ -358,7 +398,7 @@ public class MainActivity extends Activity{
 					};
 					effectSpeech("おかえり、てれびつけるね。", speechResID, speechSpeed, callback);
 				}
-				else if( "oyasumi".equals(cmd) ){
+				else if( TerebooCmdParser.COMMAND_OYASUMI.equals(cmd) ){
 					//Toast.makeText(getApplicationContext(), "speech", Toast.LENGTH_SHORT).show();
 					Runnable callback = new Runnable() {
 						@Override
@@ -375,10 +415,6 @@ public class MainActivity extends Activity{
 
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c tbs\n".getBytes());
-
-
-					//チャンネルシェア
-					channelShare("てぃーびーえす");
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_TVTOKYO.equals(cmd) ){
 					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_TVTOKYO;
@@ -444,10 +480,10 @@ public class MainActivity extends Activity{
 					effectSpeech("ぼりゅーむをみゅーとにするね。", speechResID, speechSpeed);
 					bluetoothUtil.writeChatService("v mute\n".getBytes());
 				}
-				else if( "shiritori_start".equals(cmd) ){
+				else if( TerebooCmdParser.COMMAND_SHIRITORI_START.equals(cmd) ){
 					//しりとり モードに入る
 					shiritoriMode = true;
-					q = "しりとりをやろうよ";
+					q = TerebooCmdParser.TXT_SHIRITORI_START;
 					TerebooApiUtil.shiritori(getApplicationContext(), siritoriHandler, shiritoriCookieStore, q, true);
 				}
 				else if( "zatudan_start".equals(cmd) ){
@@ -456,9 +492,11 @@ public class MainActivity extends Activity{
 					q = "ざつだんをしようよ";
 					TerebooApiUtil.shiritori(getApplicationContext(), zatudanHandler, zatudanCookieStore, q, true);
 				}
-				else if( "buy".equals(cmd) ){
+				else if( TerebooCmdParser.COMMAND_BUY.equals(cmd) ){
 					//これ買って
 					// サーバにPOSTして その時間の 現在チャンネルの番組の商品を探して 購入させる？
+					//ダミーでBooBoのオークション情報をおくる
+					buyCall("BooBo");
 				}
 				else if( "drama".equals(cmd) ){
 					// サーバにPOSTして その時間の ドラマを検索してチャンネル切り替え
@@ -492,6 +530,17 @@ public class MainActivity extends Activity{
 					};
 					effectSpeech("はーい", speechResID, speechSpeed-20,callback);
 				}
+
+
+				//TODO ログ件数が3の倍数の場合 チャンネルシェアを擬似的に実行
+				if(logs.size() %3 == 0){
+					//30秒後にチャンネルを切り替える
+					(new Timer()).schedule(new TimerTask(){
+						public void run(){
+							channelShare("0","てぃーびーえす");
+						}
+					},4000);
+				}
 			}
 			else{
 				//コマンドじゃなかった ので 雑談APIになげてみる
@@ -504,6 +553,7 @@ public class MainActivity extends Activity{
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    	super.onActivityResult(requestCode, resultCode, data);
         Log.d(TAG, "onActivityResult requestCode:"+requestCode+ " resultCode:"+ resultCode);
          if (resultCode == RESULT_OK) {
         	 switch (requestCode) {
@@ -521,6 +571,9 @@ public class MainActivity extends Activity{
             	 break;
         	 }
          }
+
+   	  	//Facebookのログイン処理
+   	  	Session.getActiveSession().onActivityResult(this, requestCode, resultCode, data);
     }
 
     /** HTTP POSTリクエスト
@@ -675,6 +728,9 @@ public class MainActivity extends Activity{
 						}
 					});
 
+					//ログに通知されたテキストを追加
+					addLog(txt);
+
 					//通知されたテキストを話す
 					effectSpeech(txt, speechResID, speechSpeed);
 				}
@@ -689,9 +745,9 @@ public class MainActivity extends Activity{
 					});
 				}
 				else if("channel".equals(cmd)){
-					//自分宛てのメッセージだった場合
+					//TODO 自分宛てのメッセージだった場合 だけ処理する
 					final String uid = rootObj.getString("uid");
-					if(userID.equals(uid) == false) return;
+
 					//チャンネルだ共有 った場合 音声合成して番組をかえる
 					final String channel = rootObj.getString("channel");
 					//確認用のメッセージ
@@ -820,7 +876,7 @@ public class MainActivity extends Activity{
 	 * @param log
 	 */
 	private void addLog(String log){
-		this.logs.add(log);
+		this.logs.add(0,log);
 		//ListViewを更新
 		logAdapter.notifyDataSetChanged();
 	}
@@ -839,9 +895,10 @@ public class MainActivity extends Activity{
 					//タイトルとチャンネルを取得
 					String channel = obj.getString("channel");
 					String title = obj.getString("title");
+					//TODO スペース等を削除する
 
 					//おすすめの 番組があったので教える
-					String txt = "おすすめわ"+title+"です。みる？";
+					String txt = "おすすめわ、"+title+"です。みる？";
 
 					//チャンネルシェアモードに入る
 					channelShareMode = true;
@@ -886,7 +943,7 @@ public class MainActivity extends Activity{
 					String title = obj.getString("title");
 
 					//おすすめの 番組があったので教える
-					String txt = "おすすめわ"+title+"です。みる？";
+					String txt = "おすすめわ、"+title+"です。みる？";
 
 					//チャンネルシェアモードに入る
 					channelShareMode = true;
@@ -931,7 +988,7 @@ public class MainActivity extends Activity{
 					String title = obj.getString("title");
 
 					//おすすめの 番組があったので教える
-					String txt = "おすすめわ"+title+"です。みる？";
+					String txt = "おすすめわ、"+title+"です。みる？";
 
 					//チャンネルシェアモードに入る
 					channelShareMode = true;
@@ -1018,7 +1075,24 @@ public class MainActivity extends Activity{
 		aquesTalk2Util.speech(txt, speechResID, speechSpeed, callback);
 	}
 
+	//音声合成に支障のある言葉を削除する
+	private String sanitizingSpeechText(String src){
+		StringBuffer sb = new StringBuffer();
+		//一文字づつチェックする
+		for(int i=0;i<src.length();i++){
+			char c = src.charAt(i);
+			//スペース,ーは削除
+			if((" ".equals(c))||("　".equals(c))
+					||("ー".equals(c))) continue;
+
+			sb.append(c);
+		}
+		return sb.toString();
+	}
+
 	public void effectSpeech(String txt,int resID,int speed,final Runnable callback1){
+		//サニタイズ
+		txt = this.sanitizingSpeechText(txt);
 		Log.d(TAG, "txt:"+txt);
 
 		//音声 開始
@@ -1039,15 +1113,26 @@ public class MainActivity extends Activity{
 	}
 
 	//友人とのチャンネル共有
-	private void channelShare(String txtSelectChannel){
-		if(userID == "1") return;
-
+	private void channelShare(String uid,String txtSelectChannel){
 		JSONObject kv = new JSONObject();
 		try{
 			kv.put("cmd", "channel");
-			kv.put("uid", (userID.equals("0"))?"1":"0");
+			kv.put("uid", uid);
 			kv.put("channel", selectChannel);
-			kv.put("txt", "ともだちが"+txtSelectChannel+"をみてるよ、いっしょに、みる？");
+			kv.put("txt", "ともだちが、"+txtSelectChannel+"をみてるよ、いっしょに、みる？");
+		}catch(Exception e){
+
+		}
+		webSocketUtil.send( kv.toString() );
+	}
+
+	//これ欲しいの擬似
+	private void buyCall(String query){
+		JSONObject kv = new JSONObject();
+		try{
+			kv.put("cmd", "url");
+			kv.put("url", "http://tereboo.biz/mori/ya_take.php?query="+query);
+			kv.put("txt", "しょうひんのじょうほうをおくったよ。");
 		}catch(Exception e){
 
 		}
@@ -1101,4 +1186,50 @@ public class MainActivity extends Activity{
 			//Toast.makeText(getApplicationContext(), "Failed statusCode:"+statusCode, Toast.LENGTH_SHORT).show();
 		}
 	};
+
+	//Facebook関連の初期処理
+	private void iniFacebook(){
+		this.facebookUtil = FacebookUtil.getInstance();
+		this.facebookUtil.setCallback( fbUtilInterface );
+
+		//ログイン処理
+		this.facebookUtil.logion( this );
+	}
+
+    private FbUtilInterface fbUtilInterface = new FbUtilInterface();
+    private class FbUtilInterface implements FacebookUtilInterface{
+
+		@Override
+		public void CallbackFacebookUtilStatusCallback(Session session,
+				SessionState state, Exception exception) {
+				Log.d(TAG, "CallbackFacebookUtilStatusCallback");
+				Toast.makeText(getApplicationContext(), "Facebook ログイン成功", Toast.LENGTH_SHORT).show();
+				//ユーザーの情報を取得する
+				facebookUtil.getUser();
+		}
+
+		@Override
+		public void CallbackFacebookUtilGetUserCallback(GraphUser user,
+				Response response) {
+			Log.d(TAG, "CallbackFacebookUtilGetUserCallback");
+			//ユーザーの情報を取得
+			TextView txtFbUserName = (TextView)findViewById(R.id.txtFbUserName);
+			txtFbUserName.setText( user.getUsername() );
+			TextView txtFbName = (TextView)findViewById(R.id.txtFbName);
+			txtFbName.setText( user.getName() );
+
+			// ブロフィール画像
+			String url = FacebookUtil.createFacebookPictureUrl(user.getId());
+			ImageView imgAccountThumbnailImage = (ImageView) findViewById(R.id.imgProfile);
+			ImageUtil.DownloadImage(MainActivity.this,imgAccountThumbnailImage, url);
+
+			//Cover 画像
+			try{
+				String cover = ((JSONObject)response.getGraphObject().getProperty("cover")).getString("source");
+				Log.d(TAG, "cover:"+cover);
+			}catch(Exception e){
+
+			}
+		}
+    };
 }

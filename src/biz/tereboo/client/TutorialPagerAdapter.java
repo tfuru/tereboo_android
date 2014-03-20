@@ -1,9 +1,22 @@
-package biz.tereboo.tereboo;
+package biz.tereboo.client;
 
+import biz.tereboo.client.facebook.FacebookUtil;
+import biz.tereboo.client.facebook.FacebookUtilInterface;
+import bz.tereboo.client.R;
+
+import com.facebook.Response;
+import com.facebook.Session;
+import com.facebook.Session.OpenRequest;
+import com.facebook.SessionState;
+import com.facebook.model.GraphUser;
+
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -12,7 +25,7 @@ public class TutorialPagerAdapter extends PagerAdapter {
 	private static final String TAG = TutorialPagerAdapter.class.getName();
 
 	//コンテキスト
-	private Context context;
+	private Activity activity;
 
 	//ページ数
 	private static int NUM_OF_VIEWS = 5;
@@ -21,8 +34,8 @@ public class TutorialPagerAdapter extends PagerAdapter {
 	 *
 	 * @param context
 	 */
-	public TutorialPagerAdapter(Context context){
-		this.context = context;
+	public TutorialPagerAdapter(Activity activity){
+		this.activity = activity;
 	}
 
     @Override
@@ -42,20 +55,25 @@ public class TutorialPagerAdapter extends PagerAdapter {
     public Object instantiateItem(View collection, int position) {
 		Log.d(TAG, "instantiateItem:"+position);
 
-    	if(NUM_OF_VIEWS-1 == position){
-    		//最後の画面
-    		Button btn = new Button( this.context );
-    		btn.setText("メイン画面へ");
-    		((ViewPager) collection).addView(btn,0);
-        	return btn;
+		LayoutInflater inflater = LayoutInflater.from(this.activity);
+		final int lastPas = NUM_OF_VIEWS-1;
+
+    	View view = null;
+    	if(lastPas == position){
+    		//最後のページだった場合
+    		view = inflater.inflate(R.layout.activity_tutorial4, null);
+    		Button btn = (Button)view.findViewById(R.id.btnNextMain);
+    		btn.setOnClickListener(this.clickBtnFbLogin);
+        	((ViewPager) collection).addView(view,0);
     	}
     	else{
-        	TextView tv = new TextView( this.context );
+			//TODO 各説明ページのレイアウトを読み込む
+    		view = inflater.inflate(R.layout.activity_tutorial0, null);
+        	TextView tv = (TextView)view.findViewById(R.id.txtPageNo);
         	tv.setText("postion :" + position);
-        	tv.setTextSize(30);
-        	((ViewPager) collection).addView(tv,0);
-        	return tv;
+        	((ViewPager) collection).addView(view,0);
     	}
+    	return view;
     }
 
     /**
@@ -77,7 +95,20 @@ public class TutorialPagerAdapter extends PagerAdapter {
     public boolean isViewFromObject(View view, Object object) {
         //表示するViewがコンテナに含まれているか判定する(表示処理のため)
         //objecthainstantiateItemメソッドで返却したオブジェクト。
-        //今回はTextViewなので以下の通りオブジェクト比較
-        return view==((TextView)object);
+        return view==((View)object);
     }
+
+    /** Facebook ログイン
+     *
+     */
+    private View.OnClickListener clickBtnFbLogin = new View.OnClickListener(){
+		@Override
+		public void onClick(View v) {
+			//メイン画面へ
+            Intent intent = new Intent(activity, MainActivity.class);
+            activity.startActivity(intent);
+            activity.finish();
+		}
+    };
+
 }

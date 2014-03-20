@@ -3,8 +3,9 @@
 
     <string name="app_name">tereboo</string>
     <string name="action_settings">Settings</string>
+    <string name="action_bluetooth_connect">テレブーと接続</string>
+    <string name="action_speech_rec_test">音声認識テスト</string>
     <string name="hello_world">Hello world!</string>
-
 
     <!--  DeviceListActivity -->
     <string name="scanning">scanning for devices...</string>
@@ -15,4 +16,9 @@
     <string name="title_other_devices">Other Available Devices</string>
     <string name="button_scan">Scan for devices</string>
 
+    <!--  Facebook API -->
+    <string name="app_id">1431391123769804</string>
+
+    <string name="txtDummy">---</string>
+    <string name="txtBtnNextMain">スタート テレブー!</string>
 </resources>

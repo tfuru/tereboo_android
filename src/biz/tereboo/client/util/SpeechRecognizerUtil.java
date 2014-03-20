@@ -1,4 +1,4 @@
-package biz.tereboo.tereboo.util;
+package biz.tereboo.client.util;
 
 import java.util.ArrayList;
 import java.util.List;

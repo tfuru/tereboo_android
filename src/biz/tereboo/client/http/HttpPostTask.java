@@ -1,4 +1,4 @@
-package biz.tereboo.tereboo.http;
+package biz.tereboo.client.http;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -22,7 +22,7 @@ import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 
-import biz.tereboo.tereboo.util.AquesTalk2Util;
+import biz.tereboo.client.util.AquesTalk2Util;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;

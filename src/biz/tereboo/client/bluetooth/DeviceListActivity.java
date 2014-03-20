@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package biz.tereboo.tereboo.bluetooth;
+package biz.tereboo.client.bluetooth;
 
 import java.util.Set;
 
-import bz.tereboo.tereboo.R;
+import bz.tereboo.client.R;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
