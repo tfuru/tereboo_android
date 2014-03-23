@@ -201,8 +201,13 @@ public class MainActivity extends Activity{
 
         //aquesTalk2Utilを終了
         this.aquesTalk2Util = null;
+
         //speechRecognizerUtil
-        this.speechRecognizerUtil = null;
+        if(this.speechRecognizerUtil != null){
+        	//音声認識処理を終了
+        	this.speechRecognizerUtil.stop();
+        	this.speechRecognizerUtil = null;
+        }
     }
 
     /** Bluetooth デバイス一覧
@@ -238,6 +243,12 @@ public class MainActivity extends Activity{
 			speechRecognizerUtil.start();
 			ret = true;
 			break;
+    	 case R.id.action_tutorial:
+    		 //チュートリアル
+             Intent intent = new Intent(this, TutorialActivity.class);
+             startActivity(intent);
+             finish();
+    		 break;
     	 }
         return ret;
     }
@@ -721,15 +732,15 @@ public class MainActivity extends Activity{
 					mainHandler.post(new Runnable() {
 						@Override
 						public void run() {
+							//ログに通知されたテキストを追加
+							addLog(url);
+
 							//Toast.makeText(getApplicationContext(), "ws url:"+url, Toast.LENGTH_SHORT).show();
 							//WebView で ページをを表示する
 							((WebView)findViewById(R.id.webView1)).loadUrl(url);
 							((RelativeLayout)findViewById(R.id.webViewContainer1)).setVisibility(RelativeLayout.VISIBLE);
 						}
 					});
-
-					//ログに通知されたテキストを追加
-					addLog(txt);
 
 					//通知されたテキストを話す
 					effectSpeech(txt, speechResID, speechSpeed);
@@ -1075,24 +1086,7 @@ public class MainActivity extends Activity{
 		aquesTalk2Util.speech(txt, speechResID, speechSpeed, callback);
 	}
 
-	//音声合成に支障のある言葉を削除する
-	private String sanitizingSpeechText(String src){
-		StringBuffer sb = new StringBuffer();
-		//一文字づつチェックする
-		for(int i=0;i<src.length();i++){
-			char c = src.charAt(i);
-			//スペース,ーは削除
-			if((" ".equals(c))||("　".equals(c))
-					||("ー".equals(c))) continue;
-
-			sb.append(c);
-		}
-		return sb.toString();
-	}
-
 	public void effectSpeech(String txt,int resID,int speed,final Runnable callback1){
-		//サニタイズ
-		txt = this.sanitizingSpeechText(txt);
 		Log.d(TAG, "txt:"+txt);
 
 		//音声 開始
@@ -1119,7 +1113,7 @@ public class MainActivity extends Activity{
 			kv.put("cmd", "channel");
 			kv.put("uid", uid);
 			kv.put("channel", selectChannel);
-			kv.put("txt", "ともだちが、"+txtSelectChannel+"をみてるよ、いっしょに、みる？");
+			kv.put("txt", "ともだちが、"+txtSelectChannel+"をみてるよ?みる？");
 		}catch(Exception e){
 
 		}

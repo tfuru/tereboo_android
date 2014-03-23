@@ -75,9 +75,13 @@ public class AquesTalk2Util {
 	public static void speech(String txt,int resID,int speed,Runnable callback){
 		completeCallback = callback;
 
+		//サニタイズ
+		String src = sanitizingSpeechText(txt);
+		Log.d(TAG, "txt:"+txt);
+
 		//音声合成 して Wav データを取得
 		byte[] phontDat = loadPhontDat(resID);
-		final byte[] wav = aquesTalk2.syntheWav(txt, speed, phontDat);
+		final byte[] wav = aquesTalk2.syntheWav( src, speed, phontDat);
 		//Log.i(TAG, "wav:"+wav);
 		if(wav != null){
 			//音声再生
@@ -137,4 +141,26 @@ public class AquesTalk2Util {
 			e.printStackTrace();
 		}
 	}
+
+	//音声合成に支障のある言葉を削除する
+	private static String sanitizingSpeechText(String src){
+		//英数字を削除
+		src = src.replaceAll("[a-zA-Z]", "").trim();
+
+		StringBuffer sb = new StringBuffer();
+		//一文字づつチェックする
+		for(int i=0;i<src.length();i++){
+			char c = src.charAt(i);
+
+			//スペースは削除
+			if((" ".equals(c))||("　".equals(c))) continue;
+			if(("Ａ".charAt(0) <= c) /* &&("Ｚ".charAt(0) >= c) */ ) continue;
+			//Log.d(TAG, "c:"+c);
+
+			sb.append(c);
+		}
+		return sb.toString();
+	}
+
+
 }

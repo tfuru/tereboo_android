@@ -5,7 +5,7 @@
     <string name="action_settings">Settings</string>
     <string name="action_bluetooth_connect">テレブーと接続</string>
     <string name="action_speech_rec_test">音声認識テスト</string>
-    <string name="hello_world">Hello world!</string>
+    <string name="action_tutorial">チュートリアル</string>
 
     <!--  DeviceListActivity -->
     <string name="scanning">scanning for devices...</string>

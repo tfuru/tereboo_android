@@ -49,7 +49,7 @@ public class SpeechRecognizerUtil implements RecognitionListener{
 	    return instance;
 	}
 
-	/** 音声認識開始
+	/** 音声認識 開始
 	 *
 	 */
 	public static void start(){
@@ -61,6 +61,16 @@ public class SpeechRecognizerUtil implements RecognitionListener{
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.JAPAN.toString());
 
         speechRecognizer.startListening(intent);
+	}
+
+	/** 音声認識 終了
+	 *
+	 */
+	public static void stop(){
+		if(speechRecognizer == null) return;
+		speechRecognizer.destroy();
+		speechRecognizer = null;
+		instance = null;
 	}
 
 	// RecognitionListener -------------
