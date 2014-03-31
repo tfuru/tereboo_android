@@ -3,25 +3,14 @@ package biz.tereboo.client;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import org.apache.http.client.CookieStore;
-import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import com.facebook.HttpMethod;
-import com.facebook.Request;
-import com.facebook.RequestAsyncTask;
-import com.facebook.Response;
-import com.facebook.Session;
-import com.facebook.SessionState;
-import com.facebook.model.GraphObject;
-import com.facebook.model.GraphUser;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -39,19 +28,26 @@ import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import biz.tereboo.client.CommandQue.CommandQueWork;
 import biz.tereboo.client.bluetooth.BluetoothUtil;
-import biz.tereboo.client.bluetooth.DeviceListActivity;
 import biz.tereboo.client.bluetooth.BluetoothUtil.BluetoothUtilEventsListener;
+import biz.tereboo.client.bluetooth.DeviceListActivity;
 import biz.tereboo.client.facebook.FacebookUtil;
 import biz.tereboo.client.facebook.FacebookUtilInterface;
 import biz.tereboo.client.http.HttpPostTask;
 import biz.tereboo.client.util.AquesTalk2Util;
+import biz.tereboo.client.util.CommonUtil;
 import biz.tereboo.client.util.ImageUtil;
 import biz.tereboo.client.util.SpeechRecognizerUtil;
 import biz.tereboo.client.util.TerebooApiUtil;
 import biz.tereboo.client.util.TerebooCmdParser;
 import biz.tereboo.client.websocket.WebSocketUtil;
 import bz.tereboo.client.R;
+
+import com.facebook.Response;
+import com.facebook.Session;
+import com.facebook.SessionState;
+import com.facebook.model.GraphUser;
 
 public class MainActivity extends Activity{
 	private static final String TAG = MainActivity.class.getName();
@@ -70,10 +66,12 @@ public class MainActivity extends Activity{
 
 	//WebSocket ラッパークラス
 	private WebSocketUtil webSocketUtil = null;
-	private static final String webSocketServerURL = "ws://153.121.52.22:8000/";
 
 	//Facebook関連処理のユーティリティ
 	private FacebookUtil facebookUtil;
+
+	//CommandQue キュー
+	private CommandQue commandQue;
 
 	private static final int REQUEST_ENABLE_BLUETOOTH = 100;
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
@@ -123,6 +121,9 @@ public class MainActivity extends Activity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        //初回起動かのフラグを保存する
+        CommonUtil.SaveSharedPreferences(getApplicationContext(),getString(R.string.PreferencesKeyIsFirstBoot),true);
+
         speechRecognizerUtil = SpeechRecognizerUtil.getInstance(this,this.speechReclistener);
         aquesTalk2Util = AquesTalk2Util.getInstance(this);
 
@@ -143,7 +144,8 @@ public class MainActivity extends Activity{
         }
 
         //WebSocket
-        this.webSocketUtil = WebSocketUtil.getInstance(getApplicationContext(),webSocketServerURL,this.webSocketEventsListener);
+        String url = getString(R.string.WebSocketServerURL);
+        this.webSocketUtil = WebSocketUtil.getInstance(getApplicationContext(),url,this.webSocketEventsListener);
     	try{
     		this.webSocketUtil.connect();
     	}
@@ -161,6 +163,26 @@ public class MainActivity extends Activity{
  			}
  		});
 
+        //チュートリアルを表示
+        ((Button) findViewById(R.id.btnShowTutorial)).setOnClickListener(new View.OnClickListener() {
+ 			@Override
+ 			public void onClick(View v) {
+ 				MainActivity.this.showTutorialActivity();
+ 			}
+ 		});
+
+        //使い方を表示
+        ((Button) findViewById(R.id.btnShowUse)).setOnClickListener(new View.OnClickListener() {
+ 			@Override
+ 			public void onClick(View v) {
+ 			    //使い方
+ 				MainActivity.this.showUseActivity();
+ 			}
+ 		});
+
+        //コマンド実行キュー
+        this.commandQue = new CommandQue();
+
         //Facebook関連を初期化する
         iniFacebook();
 
@@ -171,6 +193,9 @@ public class MainActivity extends Activity{
     @Override
     public void onStart(){
     	super.onStart();
+
+    	//デバイス一覧を表示
+    	showDeviceList();
     }
 
     @Override
@@ -187,6 +212,13 @@ public class MainActivity extends Activity{
     public void onDestroy() {
         super.onDestroy();
     	Log.w(TAG, "onDestroy");
+
+    	//コマンド実行を停止
+    	if(this.commandQue != null){
+    		this.commandQue.shutdown();
+        	this.commandQue = null;
+    	}
+
         // Bluetooth 接続を終了
         this.bluetoothUtil.closeChatService();
         this.bluetoothUtil = null;
@@ -225,14 +257,28 @@ public class MainActivity extends Activity{
         return true;
     }
 
+    /** チュートリアルを表示する
+     *
+     */
+    private void showTutorialActivity(){
+ 		Intent intent = new Intent(this, TutorialActivity.class);
+     	startActivity(intent);
+     	finish();
+    }
+
+    /** 使い方を表示する
+    *
+    */
+   private void showUseActivity(){
+		Intent intent = new Intent(this, UseActivity.class);
+    	startActivity(intent);
+    	finish();
+   }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
     	boolean ret = true;
     	switch (item.getItemId()) {
-    	 case R.id.action_settings:
-    		 //セッティング
- 			 //ret = true;
-    		 break;
     	 case R.id.action_bluetooth_connect:
     		 //テレブーと接続 Bluetooth デバイス一覧を表示 & 接続
     		 showDeviceList();
@@ -245,9 +291,11 @@ public class MainActivity extends Activity{
 			break;
     	 case R.id.action_tutorial:
     		 //チュートリアル
-             Intent intent = new Intent(this, TutorialActivity.class);
-             startActivity(intent);
-             finish();
+    	 	this.showTutorialActivity();
+    		 break;
+    	 case R.id.action_use:
+    		 //使い方
+    	 	 this.showUseActivity();
     		 break;
     	 }
         return ret;
@@ -435,7 +483,7 @@ public class MainActivity extends Activity{
 				}
 				else if( TerebooCmdParser.COMMAND_CHANNEL_FUJITV.equals(cmd) ){
 					selectChannel = TerebooCmdParser.COMMAND_CHANNEL_FUJITV;
-					effectSpeech("ふぃじてれびにするね。", speechResID, speechSpeed);
+					effectSpeech("ふじてれびにするね。", speechResID, speechSpeed);
 					//Bluetooth で チャンネル切り替えを行う
 					bluetoothUtil.writeChatService("c fujitv\n".getBytes());
 				}
@@ -544,10 +592,17 @@ public class MainActivity extends Activity{
 
 
 				//TODO ログ件数が3の倍数の場合 チャンネルシェアを擬似的に実行
-				if(logs.size() %3 == 0){
+				Log.d(TAG, "aisatuMode:"+aisatuMode+" zatudanMode:"+zatudanMode+" shiritoriMode:"+shiritoriMode);
+				Log.d(TAG, "logs:"+logs.size());
+
+				if((logs.size() %3 == 0)
+						&& (aisatuMode == false)
+						&& (zatudanMode == false)
+						&& (shiritoriMode == false)){
 					//30秒後にチャンネルを切り替える
 					(new Timer()).schedule(new TimerTask(){
 						public void run(){
+							Log.d(TAG, "channelShare");
 							channelShare("0","てぃーびーえす");
 						}
 					},4000);
@@ -795,7 +850,8 @@ public class MainActivity extends Activity{
 			Log.d(TAG, "webSocket 再接続");
 			//再接続する
 			webSocketUtil = null;
-	        webSocketUtil = WebSocketUtil.getInstance(getApplicationContext(),webSocketServerURL,webSocketEventsListener);
+			String url = getString(R.string.WebSocketServerURL);
+	        webSocketUtil = WebSocketUtil.getInstance(getApplicationContext(),url,webSocketEventsListener);
 			webSocketUtil.connect();
 		}
 
@@ -1071,39 +1127,31 @@ public class MainActivity extends Activity{
 
 	};
 
-	//エフェクト付きスピーチ
+	/** エフェクト付きスピーチ
+	 *
+	 * @param txt
+	 * @param resID
+	 * @param speed
+	 */
 	public void effectSpeech(String txt,int resID,int speed){
-		//音声 開始
-		bluetoothUtil.writeChatService("s start\n".getBytes());
-
-		Runnable callback = new Runnable() {
-			@Override
-			public void run() {
-				//音声 停止
-				bluetoothUtil.writeChatService("s end\n".getBytes());
-			}
-		};
-		aquesTalk2Util.speech(txt, speechResID, speechSpeed, callback);
+		//effectSpeech( txt, resID, speed, null);
+		this.commandQue.execute( new CommandQueWork(bluetoothUtil, aquesTalk2Util, txt, resID, speed) );
 	}
 
-	public void effectSpeech(String txt,int resID,int speed,final Runnable callback1){
-		Log.d(TAG, "txt:"+txt);
+	/** エフェクト付きスピーチ
+	 *
+	 * @param txt
+	 * @param resID
+	 * @param speed
+	 * @param callback1
+	 */
+	public void effectSpeech(String txt,int resID,int speed,final Runnable callback){
+		if(this.commandQue == null){
+			Log.d(TAG, "commandQue is null");
+			return;
+		}
 
-		//音声 開始
-		bluetoothUtil.writeChatService("s start\n".getBytes());
-
-		final Runnable callback = new Runnable() {
-			@Override
-			public void run() {
-				//音声 停止
-				bluetoothUtil.writeChatService("s end\n".getBytes());
-				if(callback1 != null){
-					callback1.run();
-				}
-			}
-		};
-
-		aquesTalk2Util.speech(txt, speechResID, speechSpeed, callback);
+		this.commandQue.execute( new CommandQueWork(bluetoothUtil, aquesTalk2Util, txt, resID, speed, callback) );
 	}
 
 	//友人とのチャンネル共有
@@ -1115,7 +1163,7 @@ public class MainActivity extends Activity{
 			kv.put("channel", selectChannel);
 			kv.put("txt", "ともだちが、"+txtSelectChannel+"をみてるよ?みる？");
 		}catch(Exception e){
-
+			Log.e(TAG, e.toString());
 		}
 		webSocketUtil.send( kv.toString() );
 	}
@@ -1206,6 +1254,8 @@ public class MainActivity extends Activity{
 		public void CallbackFacebookUtilGetUserCallback(GraphUser user,
 				Response response) {
 			Log.d(TAG, "CallbackFacebookUtilGetUserCallback");
+			if(user == null) return;
+
 			//ユーザーの情報を取得
 			TextView txtFbUserName = (TextView)findViewById(R.id.txtFbUserName);
 			txtFbUserName.setText( user.getUsername() );

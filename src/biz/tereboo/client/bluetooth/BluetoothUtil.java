@@ -202,12 +202,12 @@ public class BluetoothUtil {
             case BluetoothChatService.MESSAGE_WRITE:
                 byte[] writeBuf = (byte[]) msg.obj;
                 String writeMessage = new String(writeBuf);
-                Toast.makeText(context, "writeMessage "+ writeMessage, Toast.LENGTH_SHORT).show();
+                //Toast.makeText(context, "writeMessage "+ writeMessage, Toast.LENGTH_SHORT).show();
                 break;
             case BluetoothChatService.MESSAGE_READ:
                 byte[] readBuf = (byte[]) msg.obj;
                 String readMessage = new String(readBuf, 0, msg.arg1);
-                Toast.makeText(context, "readMessage "+ readMessage, Toast.LENGTH_SHORT).show();
+                //Toast.makeText(context, "readMessage "+ readMessage, Toast.LENGTH_SHORT).show();
 
                 //リスナー通知
                 listener.onMessage(readBuf, 0, msg.arg1);
@@ -216,11 +216,11 @@ public class BluetoothUtil {
             case BluetoothChatService.MESSAGE_DEVICE_NAME:
                 // save the connected device's name
                 String name = msg.getData().getString(BluetoothChatService.DEVICE_NAME);
-                Toast.makeText(context, "Connected to "+ name, Toast.LENGTH_SHORT).show();
+                //Toast.makeText(context, "Connected to "+ name, Toast.LENGTH_SHORT).show();
                 break;
             case BluetoothChatService.MESSAGE_TOAST:
-                Toast.makeText(context, msg.getData().getString(BluetoothChatService.TOAST),
-                               Toast.LENGTH_SHORT).show();
+                //Toast.makeText(context, msg.getData().getString(BluetoothChatService.TOAST),
+                //               Toast.LENGTH_SHORT).show();
                 break;
             }
         }

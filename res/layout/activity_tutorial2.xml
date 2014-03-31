@@ -4,12 +4,12 @@
     android:layout_height="match_parent" >
 
     <ImageView
-        android:id="@+id/imgTutorialView4"
+        android:id="@+id/imgTutorialView2"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
         android:scaleType="fitXY"
-        android:src="@drawable/tereboo_app_tutorial_5" />
+        android:src="@drawable/tereboo_app_tutorial_3" />
 
 </RelativeLayout>

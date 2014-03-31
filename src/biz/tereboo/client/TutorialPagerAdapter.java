@@ -1,25 +1,16 @@
 package biz.tereboo.client;
 
-import biz.tereboo.client.facebook.FacebookUtil;
-import biz.tereboo.client.facebook.FacebookUtilInterface;
-import bz.tereboo.client.R;
-
-import com.facebook.Response;
-import com.facebook.Session;
-import com.facebook.Session.OpenRequest;
-import com.facebook.SessionState;
-import com.facebook.model.GraphUser;
-
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.TextView;
+import android.widget.Spinner;
+import bz.tereboo.client.R;
 
 public class TutorialPagerAdapter extends PagerAdapter {
 	private static final String TAG = TutorialPagerAdapter.class.getName();
@@ -28,7 +19,10 @@ public class TutorialPagerAdapter extends PagerAdapter {
 	private Activity activity;
 
 	//ページ数
-	private static int NUM_OF_VIEWS = 5;
+	private static int NUM_OF_VIEWS = 7;
+
+	//住所のリストを生成
+	private ArrayAdapter adapterPrefecture = null;
 
 	/** コンストラクタ
 	 *
@@ -36,6 +30,11 @@ public class TutorialPagerAdapter extends PagerAdapter {
 	 */
 	public TutorialPagerAdapter(Activity activity){
 		this.activity = activity;
+
+		//住所のリストを生成
+		this.adapterPrefecture = ArrayAdapter.createFromResource(activity, R.array.arrayPrefecture,
+				android.R.layout.simple_spinner_item);
+		this.adapterPrefecture.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 	}
 
     @Override
@@ -59,20 +58,22 @@ public class TutorialPagerAdapter extends PagerAdapter {
 		final int lastPas = NUM_OF_VIEWS-1;
 
     	View view = null;
+		int resId = this.activity.getResources().getIdentifier("activity_tutorial"+position,"layout",this.activity.getPackageName());
+		view = inflater.inflate(resId, null);
+
     	if(lastPas == position){
     		//最後のページだった場合
-    		view = inflater.inflate(R.layout.activity_tutorial4, null);
     		Button btn = (Button)view.findViewById(R.id.btnNextMain);
     		btn.setOnClickListener(this.clickBtnFbLogin);
-        	((ViewPager) collection).addView(view,0);
     	}
-    	else{
-			//TODO 各説明ページのレイアウトを読み込む
-    		view = inflater.inflate(R.layout.activity_tutorial0, null);
-        	TextView tv = (TextView)view.findViewById(R.id.txtPageNo);
-        	tv.setText("postion :" + position);
-        	((ViewPager) collection).addView(view,0);
-    	}
+    	((ViewPager) collection).addView(view,0);
+
+		//住所のリストを読み込む
+		Spinner spinnerPrefecture = (Spinner) activity.findViewById(R.id.spinnerPrefecture);
+		if(spinnerPrefecture != null){
+			spinnerPrefecture.setAdapter(this.adapterPrefecture);
+		}
+
     	return view;
     }
 
@@ -87,7 +88,7 @@ public class TutorialPagerAdapter extends PagerAdapter {
     public void destroyItem(View collection, int position, Object view) {
         Log.d(TAG, "destroyItem:"+position);
 
-    	//ViewPagerに登録していたTextViewを削除する
+    	//ViewPagerに登録していたViewを削除する
         ((ViewPager) collection).removeView((View) view);
     }
 

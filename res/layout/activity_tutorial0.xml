@@ -3,13 +3,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
 
-    <TextView
-        android:id="@+id/txtPageNo"
+    <ImageView
+        android:id="@+id/imgTutorialView0"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true"
-        android:text="0000"
-        android:textSize="30dp" />
+        android:layout_height="match_parent"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:src="@drawable/tereboo_app_tutorial_1"
+        android:scaleType="fitCenter"
+        android:contentDescription="---" />
 
 </RelativeLayout>

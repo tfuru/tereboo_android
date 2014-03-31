@@ -34,7 +34,7 @@ public class CommonUtil {
 		editor.commit();
 	}
 
-	//設定値 文字列を保存
+	//設定値 boolean値を保存
 	public static void SaveSharedPreferences(Context context,String key,boolean val){
 		SharedPreferences pref = openSharedPreferences( context );
 		Editor editor = pref.edit();

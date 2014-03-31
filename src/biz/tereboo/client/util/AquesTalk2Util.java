@@ -139,6 +139,10 @@ public class AquesTalk2Util {
 		}
 		catch(Exception e){
 			e.printStackTrace();
+			//エラーだったのでcallbackだけ実行する
+			if(completeCallback != null){
+				handler.post(completeCallback);
+			}
 		}
 	}
 
@@ -153,7 +157,11 @@ public class AquesTalk2Util {
 			char c = src.charAt(i);
 
 			//スペースは削除
-			if((" ".equals(c))||("　".equals(c))) continue;
+			if( (" ".equals(c))
+				 ||("　".equals(c))
+				 ||("・".equals(c)) ) continue;
+
+			//英字は読めないので削除
 			if(("Ａ".charAt(0) <= c) /* &&("Ｚ".charAt(0) >= c) */ ) continue;
 			//Log.d(TAG, "c:"+c);
 

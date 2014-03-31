@@ -89,11 +89,12 @@ public class TerebooCmdParser {
 
 			//雑談モード
 			put("雑談", "zatudan_start");
+			put("雑談は終わり", "zatudan_stop");
 			put("終わり", "zatudan_stop");
 
 			//あいさつモード
 			put("挨拶", COMMAND_AISATU_START);
-			put("終わり", COMMAND_AISATU_STOP);
+			put("挨拶は終わり", COMMAND_AISATU_STOP);
 
 			//カテゴリー
 			put("ドラマ", "drama");
